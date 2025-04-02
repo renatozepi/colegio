@@ -5,55 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login</title>
   <style>
-    * {
-      box-sizing: border-box;
+    body {
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
       font-family: Arial, sans-serif;
     }
 
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background: #f0f0f0;
-    }
-
     .login-container {
-      background: white;
+      background-color: white;
       padding: 40px;
       border-radius: 20px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       width: 100%;
       max-width: 400px;
     }
 
-    .login-container h2 {
+    h2 {
       text-align: center;
       margin-bottom: 30px;
+      color: #333;
     }
 
-    .login-container input {
+    input {
       width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 10px;
+      padding: 12px;
+      margin: 10px 0 20px;
       border: 1px solid #ccc;
+      border-radius: 10px;
+      box-sizing: border-box;
     }
 
-    .login-container button {
+    button {
       width: 100%;
-      padding: 15px;
-      background: #007bff;
+      padding: 12px;
+      background-color: #4f46e5;
       color: white;
       border: none;
       border-radius: 10px;
-      font-size: 16px;
       cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
     }
 
-    .login-container button:hover {
-      background: #0056b3;
+    button:hover {
+      background-color: #4338ca;
     }
 
     .error {
@@ -65,59 +64,72 @@
 </head>
 <body>
   <div class="login-container">
-    <h2>Iniciar sesión</h2>
-    <input type="text" id="usuario" placeholder="Usuario" />
+    <h2>Iniciar Sesión</h2>
+    <input type="text" id="username" placeholder="Usuario" />
     <input type="password" id="password" placeholder="Contraseña" />
-    <button onclick="login()">Ingresar</button>
-    <div class="error" id="errorMensaje"></div>
+    <button onclick="attemptLogin()">Ingresar</button>
+    <div id="error-message" class="error"></div>
   </div>
 
-  <!-- Firebase SDK -->
-  <script type="module">
-    // Importa Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
-    // Configuración Firebase (la tuya exacta, basada en la imagen que me diste)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBX-TSDlUqJQORURvQLWMCZ1ldmK3EBb4Y",
+  <script>
+     const firebaseConfig = {
+      apiKey: "TU_API_KEY",
       authDomain: "definitivo-4841f.firebaseapp.com",
       projectId: "definitivo-4841f",
       storageBucket: "definitivo-4841f.appspot.com",
-      messagingSenderId: "1037353039298",
-      appId: "1:1037353039298:web:9a6c948f519579effdbf68"
+      messagingSenderId: "TU_SENDER_ID",
+      appId: "TU_APP_ID"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    async function login() {
-      const userInput = document.getElementById("usuario").value.trim();
-      const passInput = document.getElementById("password").value.trim();
-      const errorDiv = document.getElementById("errorMensaje");
+    async function attemptLogin() {
+      const usernameInput = document.getElementById("username");
+      const passwordInput = document.getElementById("password");
+      const errorDiv = document.getElementById("error-message");
 
-      errorDiv.textContent = "";
+      if (!usernameInput || !passwordInput) {
+        errorDiv.textContent = "Error interno: no se encuentran los campos.";
+        return;
+      }
 
-      const querySnapshot = await getDocs(collection(db, "usuariosData"));
-      let encontrado = false;
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.usuario === userInput) {
-          encontrado = true;
-          if (data.contraseña === passInput) {
-            // Guardar permisos en localStorage
-            localStorage.setItem("permisos", JSON.stringify(data.permisos));
-            // Redirigir a dashboard
-            window.location.href = "dashboard.html";
-          } else {
-            errorDiv.textContent = "Contraseña incorrecta.";
-          }
+      if (!username || !password) {
+        errorDiv.textContent = "Por favor completa ambos campos.";
+        return;
+      }
+
+      try {
+        const userDoc = await db.collection("users").doc(username).get();
+
+        if (!userDoc.exists) {
+          errorDiv.textContent = "Usuario no encontrado.";
+          return;
         }
-      });
 
-      if (!encontrado) {
-        errorDiv.textContent = "Usuario no encontrado.";
+        const userData = userDoc.data();
+        if (userData.password !== password) {
+          errorDiv.textContent = "Contraseña incorrecta.";
+          return;
+        }
+
+        // Guardar permisos en localStorage
+        localStorage.setItem("permisos", JSON.stringify(userData.permisos));
+        localStorage.setItem("usuario", username);
+
+        // Redirigir al dashboard
+        window.location.href = "dashboard.html";
+
+      } catch (error) {
+        console.error("Error al iniciar sesión:", error);
+        errorDiv.textContent = "Ocurrió un error. Intenta nuevamente.";
       }
     }
   </script>
