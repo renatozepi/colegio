@@ -1,137 +1,2904 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login</title>
+  <meta charset="UTF-8">
+  <title>Menú Principal</title>
+  <!-- Fuente Poppins -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js (para gráficos en el menú de Finanzas) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
+    /* =================== ESTILOS GENERALES =================== */
+#logoutContainer {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 9999;
+}
+
+#logoutContainer button {
+  background-color: #f1c40f;
+  color: #1a2e55;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s ease;
+}
+
+#logoutContainer button:hover {
+  box-shadow: 0 4px 7px rgba(0, 0, 0, 0.2);
+}
+    * { box-sizing: border-box; }
     body {
-      background: #f3f4f6;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #e5efff;
+      min-height: 100vh;
+    }
+    .hidden { display: none !important; }
+    .active { display: block !important; }
+
+
+
+    /* =================== LANDING PAGE =================== */
+    #landingPage {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      margin: 0;
-      font-family: Arial, sans-serif;
+    }
+    #landingPage h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #1a2e55;
+    }
+    .landing-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .landing-buttons button {
+      background-color: #f1c40f;
+      color: #1a2e55;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s;
+    }
+    .landing-buttons button:hover {
+      background-color: #1a2e55;
+      color: #f1c40f;
     }
 
-    .login-container {
-      background-color: white;
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    /* =================== CONTENEDOR GENERAL =================== */
+    .app-container {
+      display: none;
+      background-color: #fff;
+      width: 85%;
+      max-width: 1100px;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      position: relative;
+      padding-bottom: 60px;
+    }
+    .activeContainer { display: block !important; }
+
+    /* Botón Regresar */
+    .bottom-left-btn {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      background-color: #4a90e2;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .bottom-left-btn:hover { background-color: #1a2e55; }
+
+    /* =================== TABS =================== */
+    .tabs {
+      display: flex;
+      background-color: #1a2e55;
+      border-radius: 6px 6px 0 0;
+    }
+    .tab {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      color: #fff;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    .tab:hover { background-color: #4a90e2; }
+    .tab.activeTab { background-color: #4a90e2; }
+    .tab-content { display: none; padding: 20px; }
+    .tab-content.activeTabContent { display: block; }
+
+
+    /* =================== ESTILOS MACROS =================== */
+    #macrosContainer .macros-list {
+      display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;
+    }
+    #macrosContainer .macro-item {
+      border: 1px solid #ccc; border-radius: 6px; padding: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #macrosContainer .macro-item button {
+      background: none; border: none; cursor: pointer; color: #4a90e2; font-weight: 600; margin-left: 10px;
+    }
+    #macrosContainer .macro-item button:hover { color: #1a2e55; }
+    #macrosContainer .create-macro {
+      display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center;
+    }
+    #macrosContainer .create-macro input {
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px;
+      flex: 1; max-width: 300px;
+    }
+    #macrosContainer .create-macro button {
+      background-color: #f1c40f; color: #1a2e55; border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer;
+    }
+    #macrosContainer .create-macro button:hover {
+      background-color: #1a2e55; color: #f1c40f;
+    }
+    #macrosContainer .register-children-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    #macrosContainer .macro-title {
+      font-size: 1.1rem; font-weight: 600; color: #4a90e2;
+    }
+    #macrosContainer .form-section {
+      display: flex; flex-direction: column; max-width: 400px; gap: 0.5rem; margin-bottom: 1rem;
+    }
+    #macrosContainer .form-section label { font-weight: 600; }
+    #macrosContainer .form-section input { border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; max-width: 220px; }
+    #macrosContainer .child-table {
+      width: 100%; border-collapse: collapse; margin-top: 1rem;
+    }
+    #macrosContainer .child-table thead {
+      background-color: #f1c40f; color: #1a2e55;
+    }
+    #macrosContainer .child-table th,
+    #macrosContainer .child-table td {
+      border: 1px solid #ddd; padding: 8px; text-align: left;
+    }
+    #macrosContainer .actions {
+      margin-top: 1rem; display: flex; gap: 1rem;
+    }
+    #macrosContainer .actions button {
+      background-color: #f1c40f; color: #1a2e55; border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer;
+    }
+    #macrosContainer .actions button:hover {
+      background-color: #1a2e55; color: #f1c40f;
+    }
+
+    /* =================== ESTILOS SERVICES =================== */
+    #servicesContainer .services-list {
+      display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;
+    }
+    #servicesContainer .service-item {
+      border: 1px solid #ccc; border-radius: 6px; padding: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #servicesContainer .service-item button {
+      background: none; border: none; cursor: pointer; color: #4a90e2; font-weight: 600; margin-left: 10px;
+    }
+    #servicesContainer .service-item button:hover { color: #1a2e55; }
+    #servicesContainer .create-service {
+      display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center;
+    }
+    #servicesContainer .create-service input {
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px;
+      flex: 1; max-width: 300px;
+    }
+    #servicesContainer .create-service button {
+      background-color: #f1c40f; color: #1a2e55; border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer;
+    }
+    #servicesContainer .create-service button:hover {
+      background-color: #1a2e55; color: #f1c40f;
+    }
+    #servicesContainer .variants-form {
+      display: flex; flex-direction: column; max-width: 400px; gap: 0.5rem; margin-top: 1rem;
+    }
+    #servicesContainer .days-container {
+      display: flex; gap: 6px; margin: 6px 0;
+    }
+    .day-btn {
+      background-color: #4a90e2; color: white; border: none; border-radius: 6px;
+      padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+    }
+    .day-btn.selected {
+      background-color: #f1c40f; color: #1a2e55;
+    }
+    #servicesContainer .variants-table {
+      width: 100%; border-collapse: collapse; margin-top: 1rem;
+    }
+    #servicesContainer .variants-table thead {
+      background-color: #f1c40f; color: #1a2e55;
+    }
+    #servicesContainer .variants-table th, 
+    #servicesContainer .variants-table td {
+      border: 1px solid #ddd; padding: 8px;
+    }
+    #servicesContainer .children-table {
+      width: 100%; border-collapse: collapse; margin-top: 1rem;
+    }
+    #servicesContainer .children-table thead {
+      background-color: #f1c40f; color: #1a2e55;
+    }
+    #servicesContainer .children-table th,
+    #servicesContainer .children-table td {
+      border: 1px solid #ddd; padding: 8px; text-align: left;
+    }
+
+    /* =================== ESTILOS MATRÍCULAS =================== */
+    #matriculasContainer .tabs-bar {
+      background-color: #1a2e55;
+      border-radius: 6px 6px 0 0;
+      color: #fff;
+      padding: 14px;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    #matriculasContainer .filter-section {
+      margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;
+    }
+    #matriculasContainer .matriculas-list-table {
+      width: 100%; border-collapse: collapse;
+    }
+    #matriculasContainer .matriculas-list-table thead {
+      background-color: #f1c40f; color: #1a2e55;
+    }
+    #matriculasContainer .matriculas-list-table th,
+    #matriculasContainer .matriculas-list-table td {
+      border: 1px solid #ddd; padding: 8px; text-align: left;
+    }
+    /* Ficha / Pensiones */
+    .ficha-btn, .pension-btn {
+      border: none;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      padding: 6px 10px;
+      outline: none;
+    }
+
+
+    /* =================== FICHA INFORMATIVA =================== */
+    #fichaInformativaPanel {
+      display: none;
+      background-color: #fff;
+      width: 85%;
+      max-width: 1100px;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      position: relative;
+      padding: 20px;
+      padding-bottom: 60px; 
+    }
+    #fichaInformativaPanel h2 {
+      margin-bottom: 1rem;
+    }
+    #fichaInformativaPanel .section-title {
+      font-weight: 600; font-size: 1.1rem; margin-top: 1rem; color: #1a2e55;
+    }
+    .form-field {
+      margin-bottom: 8px; display: flex; flex-direction: column; max-width: 400px;
+    }
+    .form-field label {
+      font-weight: 600; margin-bottom: 2px;
+    }
+    .form-field input[type='text'],
+    .form-field input[type='number'],
+    .form-field textarea {
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 8px; max-width: 350px;
+    }
+    .form-field select, .form-field input[type='date'] {
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 8px; max-width: 200px;
+    }
+    .finish-btn {
+      background-color: #f1c40f; color: #1a2e55; border: none; border-radius: 6px; 
+      padding: 8px 12px; font-weight: 600; cursor: pointer; margin-top: 1rem;
+    }
+    .finish-btn:hover {
+      background-color: #1a2e55; color: #f1c40f;
+    }
+    .subsection {
+      border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin-top: 10px; 
+    }
+    .subsection h4 {
+      margin-bottom: 5px;
+    }
+    .edit-section-btn {
+      background: #4a90e2; color: #fff; border: none; border-radius: 6px; padding: 5px 8px; font-weight: 600; margin-left: 10px; cursor: pointer;
+    }
+    .edit-section-btn:hover {
+      background-color: #1a2e55;
+    }
+
+    /* =================== ESTILOS ADMIN FINANZAS =================== */
+    /* Contenedor para Finanzas */
+    #finanzasContainer {
+      display: none;
+      background-color: #fff;
+      width: 85%;
+      max-width: 1100px;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      position: relative;
+      padding-bottom: 60px;
+    }
+    /* Fin de pestañas: se reutiliza la clase .tabs, .tab y .tab-content */
+
+    /* Selector de mes (dropdown) en finanzas */
+    .finanzas-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 10px 20px;
+      background-color: #f9f9f9;
+    }
+    .finanzas-header label {
+      margin-right: 10px;
+      font-weight: 600;
+      color: #1a2e55;
+    }
+    .finanzas-header select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    /* Tarjetas (cajas) para Total Mensual */
+    .finanzas-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+    .finanzas-card {
+      background-color: #f1c40f;
+      color: #1a2e55;
+      border-radius: 6px;
+      padding: 15px;
+      flex: 1 1 calc(33.333% - 20px);
+      text-align: center;
+      min-width: 250px;
+    }
+    .finanzas-card h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .finanzas-card p {
+      margin: 5px 0 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    /* Indicador de porcentaje */
+    .finanzas-indicador {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 600;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* Formularios y tablas en Egresos e Ingresos */
+    .finanzas-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .finanzas-form input, .finanzas-form select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+    .finanzas-form button {
+      background-color: #f1c40f;
+      color: #1a2e55;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .finanzas-form button:hover {
+      background-color: #1a2e55;
+      color: #f1c40f;
+    }
+    .finanzas-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .finanzas-table th, .finanzas-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .finanzas-table thead {
+      background-color: #f1c40f;
+      color: #1a2e55;
+    }
+    /* Placeholder para gráficos */
+    .chart-container {
       width: 100%;
       max-width: 400px;
-    }
-
-    h2 {
-      text-align: center;
-      margin-bottom: 30px;
-      color: #333;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0 20px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #4f46e5;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background-color 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #4338ca;
-    }
-
-    .error {
-      color: red;
-      text-align: center;
-      margin-top: 10px;
+      margin: 0 auto 20px;
     }
   </style>
 </head>
 <body>
-  <div class="login-container">
-    <h2>Iniciar Sesión</h2>
-    <input type="text" id="username" placeholder="Usuario" />
-    <input type="password" id="password" placeholder="Contraseña" />
-    <button onclick="attemptLogin()">Ingresar</button>
-    <div id="error-message" class="error"></div>
+  <div id="logoutContainer" style="position:absolute; top:15px; right:15px;">
+    <button onclick="logout()" style="background-color:#f1c40f; border:none; border-radius:6px; padding:8px; font-weight:600; cursor:pointer;">
+      Cerrar Sesión
+    </button>
+  </div>
+<!-- =================== LANDING PAGE =================== -->
+<div id="landingPage">
+  <h1>Bienvenid@, selecciona qué deseas administrar:</h1>
+  <div class="landing-buttons">
+    <button onclick="goToMacros()">Administrador de Macros</button>
+    <button onclick="goToServices()">Administrador de Servicios</button>
+    <button onclick="goToMatriculas()">Administrador de Matrículas</button>
+    <button onclick="goToFinanzas()">Administrador de Finanzas</button>
+    <button onclick="goToUsers()">Administrador de Usuarios</button>
+  </div>
+</div>
+
+<!-- =================== CONTENEDOR MACROS =================== -->
+<div class="app-container" id="macrosContainer">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabMacros" onclick="openTabMacros('Macros')">Administrador de Macros</div>
+    <div class="tab" id="tabNinos" style="display:none;">Registrar Niños</div>
+  </div>
+  <div class="tab-content activeTabContent" id="contentMacros">
+    <h2>Administrador de Macros</h2>
+    <p>Aquí puedes ver todas las macros, crear nuevas o gestionarlas.</p>
+    <div class="macros-list" id="macrosList"></div>
+    <div class="create-macro">
+      <input type="text" id="tituloMacro" placeholder="Título de la nueva macro..." />
+      <button onclick="crearMacro()">Crear Macro</button>
+    </div>
+  </div>
+  <div class="tab-content" id="contentNinos">
+    <div class="register-children-header">
+      <h2>Registrar Niños</h2>
+      <span class="macro-title" id="currentMacroTitle"></span>
+    </div>
+    <div class="form-section">
+      <label>Nombre:</label>
+      <input type="text" id="nombre" placeholder="Ej: ALESSA" />
+      <label>Apellidos:</label>
+      <input type="text" id="apellidos" placeholder="Ej: AGURTO HO" />
+      <label>Código:</label>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span id="codigoFijo"></span>
+        <input type="text" id="codigoRestante" placeholder="01" />
+      </div>
+      <label>Fecha:</label>
+      <input type="date" id="fechaInscripcion" />
+      <label>Importe:</label>
+      <input type="number" id="importe" placeholder="Ej: 50.00" step="0.01" />
+      <button onclick="agregarOguardarNino()" id="btnNinoPrincipal">Agregar Niño</button>
+    </div>
+    <table class="child-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Apellidos</th>
+          <th>Código</th>
+          <th>Fecha</th>
+          <th>Importe</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyNinos"></tbody>
+    </table>
+    <div class="actions">
+      <button onclick="generarTxt()">Generar TXT</button>
+      <button onclick="guardarYVolver()">Guardar y Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== CONTENEDOR SERVICES =================== -->
+<div class="app-container" id="servicesContainer">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabServicesMain" onclick="openTabServices('ServicesMain')">Administrador de Servicios</div>
+    <div class="tab" id="tabServicesVariants" style="display:none;">Creador de Variantes</div>
+    <div class="tab" id="tabServicesChildren" style="display:none;">Administrar Niños</div>
+  </div>
+  <div class="tab-content activeTabContent" id="contentServicesMain">
+    <h2>Administrador de Servicios</h2>
+    <p>Aquí puedes ver todos los servicios, crear nuevos o gestionarlos.</p>
+    <div class="services-list" id="servicesList"></div>
+    <div class="create-service">
+      <input type="text" id="tituloService" placeholder="Título del nuevo servicio..." />
+      <button onclick="crearService()">Crear Servicio</button>
+    </div>
+  </div>
+  <div class="tab-content" id="contentServicesVariants">
+    <h2>Creador de Variantes</h2>
+    <p id="currentServiceTitle" style="font-weight: 600; color:#4a90e2;"></p>
+    <div class="variants-form">
+      <label>Nombre de la variante:</label>
+      <input type="text" id="variantName" placeholder="Ej: Ejemplo 1" />
+      <label>Precio:</label>
+      <input type="number" id="variantPrice" placeholder="Ej: 100.00" step="0.01" />
+      <label>Días de la semana:</label>
+      <div class="days-container" id="daysContainer"></div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div>
+          <label>Hora de inicio:</label><br/>
+          <input type="time" id="variantStart" />
+        </div>
+        <div>
+          <label>Hora de término:</label><br/>
+          <input type="time" id="variantEnd" />
+        </div>
+      </div>
+      <button style="margin-top:10px;" onclick="agregarOguardarVariante()" id="btnVariantPrincipal">Agregar Variante</button>
+    </div>
+    <table class="variants-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Días</th>
+          <th>Precio</th>
+          <th>Horario</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyVariants"></tbody>
+    </table>
+    <div class="actions">
+      <button onclick="doneVariants()">Listo</button>
+    </div>
+  </div>
+  <div class="tab-content" id="contentServicesChildren">
+    <h2>Administrar Niños</h2>
+    <p id="currentServiceTitleChild" style="font-weight:600; color:#4a90e2;"></p>
+    <div class="form-section">
+      <label>Nombre:</label>
+      <input type="text" id="childName" placeholder="Ej: JUAN" />
+      <label>Apellidos:</label>
+      <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
+      <label>Fecha Ingreso:</label>
+      <input type="date" id="childDate" />
+      <label id="labelVariantChild">Variante:</label>
+      <select id="childVariantSelect">
+        <!-- Llenado dinámico -->
+      </select>
+      <button onclick="agregarOguardarChild()" id="btnChildPrincipal">Agregar Niño</button>
+    </div>
+    <table class="children-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Apellidos</th>
+          <th>Fecha</th>
+          <th>Variante</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyChildren"></tbody>
+    </table>
+    <div class="actions">
+      <button onclick="doneChildren()">Listo</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== CONTENEDOR MATRÍCULAS =================== -->
+<div class="app-container" id="matriculasContainer">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs-bar">Administrador de Matrículas</div>
+  <div class="filter-section">
+    <label>Año:</label>
+    <select id="filtroAno">
+      <option value="">(Todos)</option>
+      <option value="1">1 año</option>
+      <option value="2">2 años</option>
+      <option value="3">3 años</option>
+      <option value="4">4 años</option>
+      <option value="5">5 años</option>
+    </select>
+    <label>Adeudan pensión:</label>
+    <select id="filtroPension">
+      <option value="">(Todos)</option>
+      <option value="SI">Sí</option>
+      <option value="NO">No</option>
+    </select>
+    <button onclick="filtrarMatriculas()">Aplicar Filtro</button>
+  </div>
+  <table class="matriculas-list-table">
+    <thead>
+      <tr>
+        <th>Apellidos y Nombres</th>
+        <th>Año</th>
+        <th>Ficha Informativa</th>
+        <th>Pagó Pensión</th>
+        <th>Pensiones Atrasadas</th>
+      </tr>
+    </thead>
+    <tbody id="tbodyMatriculas"></tbody>
+  </table>
+</div>
+
+<!-- =================== CONTENEDOR FINANZAS =================== -->
+<div class="app-container" id="finanzasContainer">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabFinanzasTotal" onclick="openTabFinanzas('Total')">Total Mensual</div>
+    <div class="tab" id="tabFinanzasEgresos" onclick="openTabFinanzas('Egresos')">Egresos</div>
+    <div class="tab" id="tabFinanzasIngresos" onclick="openTabFinanzas('Ingresos')">Ingresos</div>
+  </div>
+  <!-- Encabezado con selector de mes -->
+  <div class="finanzas-header">
+    <label for="finanzasMes">Mes:</label>
+    <select id="finanzasMes" onchange="cambiarMesFinanzas()">
+      <!-- Opciones generadas dinámicamente -->
+    </select>
+  </div>
+  <!-- Contenido de cada subpanel -->
+  <div class="tab-content activeTabContent" id="contentFinanzasTotal">
+    <h2>Administrador de Finanzas - Total Mensual</h2>
+    <!-- Sección superior con gráficos y total central (placeholders) -->
+  <div style="display: flex; justify-content: center; align-items: center; height: 10%;">
+      <div class="chart-container">
+        <canvas id="chartFinanzasCircular"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartFinanzasLinealTotal"></canvas>
+      </div>
+    </div>
+    <!-- Tarjetas de indicadores en 2 filas (máximo 3 por fila) -->
+    <div class="finanzas-cards">
+      <div class="finanzas-card">
+        <h3>Egresos Variables</h3>
+        <p id="egresosVariables">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Egresos Fijos</h3>
+        <p id="egresosFijos">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Egresos Totales</h3>
+        <p id="egresosTotales">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Brutos Esperados</h3>
+        <p id="ingresosBrutosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Netos Esperados</h3>
+        <p id="ingresosNetosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Brutos Totales</h3>
+        <p id="ingresosBrutosTotales">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Netos Totales</h3>
+        <p id="ingresosNetosTotales">S/ 0.00</p>
+      </div>
+    </div>
+    <!-- Indicador de variación respecto al mes anterior -->
+    <div class="finanzas-indicador" id="indicadorVariacion">
+      <!-- Se mostrará algo como: +10% o -5% -->
+      Variación: +0%
+    </div>
+  </div>
+  <div class="tab-content" id="contentFinanzasEgresos">
+    <h2>Administrador de Finanzas - Egresos</h2>
+    <!-- Formulario para agregar egresos -->
+    <div class="finanzas-form">
+      <input type="text" id="egresoNombre" placeholder="Nombre del egreso" />
+      <select id="egresoTipo">
+        <option value="">-- Selecciona Tipo --</option>
+        <option value="Fijo">Fijo</option>
+        <option value="Variable">Variable</option>
+      </select>
+      <select id="egresoSubtipo">
+        <!-- Opciones de subtipos, se pueden editar -->
+        <option value="">-- Selecciona Subtipo --</option>
+      </select>
+      <button type="button" onclick="agregarNuevoSubtipo()">+</button>
+      <button type="button" onclick="eliminarSubtipo()">-</button>
+      <input type="number" id="egresoCantidad" placeholder="Cantidad" step="0.01" />
+      <input type="number" id="egresoDescuento" placeholder="Descuento" step="0.01" />
+      <button onclick="agregarEgreso()">Agregar</button>
+    </div>
+    <!-- Tabla de egresos -->
+    <table class="finanzas-table" id="tablaEgresos">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Subtipo</th>
+          <th>Cantidad</th>
+          <th>Descuento</th>
+          <th>Total</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Filas generadas dinámicamente -->
+      </tbody>
+    </table>
+    <!-- Gráficos para egresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartEgresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartEgresosCircular"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="tab-content" id="contentFinanzasIngresos">
+    <h2>Administrador de Finanzas - Ingresos</h2>
+    <!-- Se muestran dos secciones: Total Esperado y Total Neto -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="finanzas-card">
+        <h3>Total Esperado</h3>
+        <p id="ingresosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Total Neto</h3>
+        <p id="ingresosNetos">S/ 0.00</p>
+      </div>
+    </div>
+    <!-- Tabla de ingresos (solo visualización) -->
+    <table class="finanzas-table" id="tablaIngresos">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Subtipo</th>
+          <th>Total</th>
+          <th>Pagó Mensualidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Filas generadas dinámicamente -->
+      </tbody>
+    </table>
+    <!-- Gráficos para ingresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartIngresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartIngresosCircular"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- =================== CONTENEDOR USERS =================== -->
+<div class="app-container" id="usersContainer" style="display:none;">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabUsersMain" onclick="openTabUsers('UsersMain')">Usuarios</div>
+    <!-- Ocultamos la pestaña de Editar Usuario por defecto -->
+    <div class="tab" id="tabEditUser" style="display:none;" onclick="openTabUsers('EditUser')">Editar Usuario</div>
   </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <!-- Contenido pestaña principal: lista y creación de usuarios -->
+  <div class="tab-content activeTabContent" id="contentUsersMain">
+    <h2>Administrador de Usuarios</h2>
+    <div id="usersList" style="margin-top:10px;"></div>
 
-  <script>
-     const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "definitivo-4841f.firebaseapp.com",
-      projectId: "definitivo-4841f",
-      storageBucket: "definitivo-4841f.appspot.com",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
+    <h3 style="margin-top:20px;">Crear nuevo usuario</h3>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input type="text" id="newUserName" placeholder="Usuario" />
+      <input type="password" id="newUserPass" placeholder="Contraseña" />
+      <button onclick="crearUser()">Crear</button>
+    </div>
+  </div>
+
+  <!-- Contenido pestaña para editar un usuario -->
+  <div class="tab-content" id="contentEditUser">
+    <h2 id="currentUserTitle"></h2>
+    <p>Define los permisos para el usuario</p>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label><input type="checkbox" id="permMacros"/> Macros</label>
+      <label><input type="checkbox" id="permMacrosNinos"/> Macros - Niños</label>
+      <label><input type="checkbox" id="permServices"/> Servicios</label>
+      <label><input type="checkbox" id="permServicesVariants"/> Servicios - Variantes</label>
+      <label><input type="checkbox" id="permServicesChildren"/> Servicios - Niños</label>
+      <label><input type="checkbox" id="permMatriculas"/> Matrículas</label>
+      <label><input type="checkbox" id="permFinanzas"/> Finanzas</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasTotal"/> - Total</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasEgresos"/> - Egresos</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasIngresos"/> - Ingresos</label>
+    </div>
+    <button style="margin-top:10px;" onclick="guardarPermisosUsuario()">Guardar Permisos</button>
+  </div>
+</div>
+
+<!-- =================== FICHA INFORMATIVA =================== -->
+<div id="fichaInformativaPanel">
+  <button class="bottom-left-btn" onclick="goBackFicha()">Regresar</button>
+  <h2>Ficha Informativa</h2>
+  <div id="fichaContent" style="margin-bottom:30px;"></div>
+</div>
+
+<!-- Coloca esto al inicio del bloque de <script> en tu dashboard -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    getDocs,
+    deleteDoc
+  } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPSya0kEAydB8_WxEbei56KF36ZmJ1n7I",
+    authDomain: "definitivo-4841f.firebaseapp.com",
+    projectId: "definitivo-4841f",
+    storageBucket: "definitivo-4841f.firebasestorage.app",
+    messagingSenderId: "92662019661",
+    appId: "1:92662019661:web:de3ccc7b6b5ae5e4134e04"
+  };
+
+  const appFirebase = initializeApp(firebaseConfig);
+  const db = getFirestore(appFirebase);
+
+  // Recuperar usuario y permisos del localStorage
+let currentUser = {
+  username: localStorage.getItem("usuario"),
+  permisos: JSON.parse(localStorage.getItem("permisos") || "{}")
+};
+
+if (!currentUser.username) {
+  window.location.href = "login.html";
+}
+
+  /*************************************************************
+   * Global Variables and Screen Navigation
+   *************************************************************/
+  let screenStack = ["landing"];
+  let users = [];
+  let editingUsername = null;
+  let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
+
+async function goToMacros() {
+  // Verificar permiso (si lo deseas)
+  if (!currentUser || !currentUser.permisos.macros) {
+    alert("No tienes permiso para acceder a Macros.");
+    return;
+  }
+  // Ya no necesitamos ocultar el loginPage, porque no existe en el dashboard
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('macrosContainer').classList.add('activeContainer');
+  
+  // Carga de datos y demás
+  await initMacros();
+}
+
+  async function loadFinanzasData() {
+  try {
+    const docRef = doc(db, "data", "finanzas");
+    const docSnap = await getDoc(docRef);
+    if(docSnap.exists()){
+      const data = docSnap.data();
+      finanzasData.egresos = data.egresos || [];
+      // Si tienes almacenados los subtipos también:
+      subtiposEgresos = data.subtipos || subtiposEgresos;
+    }
+  } catch (error) {
+    console.error("Error loading finanzas data:", error);
+  }
+}
+
+async function saveFinanzasData() {
+  try {
+    const docRef = doc(db, "data", "finanzas");
+    const data = {
+      egresos: finanzasData.egresos,
+      subtipos: subtiposEgresos
+    };
+    await setDoc(docRef, data, { merge: true });
+    console.log("Finanzas data saved to Firebase");
+  } catch (error) {
+    console.error("Error saving finanzas data:", error);
+  }
+}
+
+async function goToServices(){
+  if(!currentUser || !currentUser.permisos.services){
+    alert("No tienes permiso para acceder a Servicios.");
+    return;
+  }
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('servicesContainer').classList.add('activeContainer');
+    screenStack.push("services");
+    await initServices();
+  }
+async function goToMatriculas(){
+  if(!currentUser || !currentUser.permisos.matriculas){
+    alert("No tienes permiso para acceder a Matrículas.");
+    return;
+  }
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('matriculasContainer').classList.add('activeContainer');
+    screenStack.push("matriculas");
+    await initMatriculas();
+  }
+async function goToFinanzas(){
+  if(!currentUser || !currentUser.permisos.finanzas){
+    alert("No tienes permiso para acceder a Finanzas.");
+    return;
+  }
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('finanzasContainer').classList.add('activeContainer');
+  screenStack.push("finanzas");
+  // Cargar la información de servicios para que los ingresos se calculen correctamente
+  await loadFromFirebaseServices();
+  // Inicializar Finanzas (que a su vez llama a renderFinanzas y actualiza los gráficos)
+  await initFinanzas();
+}
+function goBack(){
+  // Elimina la última entrada de la pila
+  screenStack.pop();
+  // Si la pila quedó vacía, se fuerza que el current sea "landing"
+  const current = screenStack[screenStack.length - 1] || "landing";
+
+  // Oculta todos los contenedores
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('macrosContainer')?.classList.remove('activeContainer');
+  document.getElementById('servicesContainer')?.classList.remove('activeContainer');
+  document.getElementById('matriculasContainer')?.classList.remove('activeContainer');
+  document.getElementById('finanzasContainer')?.classList.remove('activeContainer');
+
+  // Según el valor actual, muestra el contenedor correspondiente
+  if(current === "landing"){
+    document.getElementById('landingPage').classList.remove('hidden');
+  } else if(current === "macros"){
+    document.getElementById('macrosContainer').classList.add('activeContainer');
+  } else if(current === "services"){
+    document.getElementById('servicesContainer').classList.add('activeContainer');
+  } else if(current === "matriculas"){
+    document.getElementById('matriculasContainer').classList.add('activeContainer');
+    renderMatriculasList();
+  } else if(current === "finanzas"){
+    document.getElementById('finanzasContainer').classList.add('activeContainer');
+    renderFinanzas();
+  }
+}
+
+  function goBackFicha(){
+    screenStack.pop();
+    document.getElementById('fichaInformativaPanel').style.display = 'none';
+    const curr = screenStack[screenStack.length - 1];
+    if (curr === "matriculas") {
+      document.getElementById('matriculasContainer').classList.add('activeContainer');
+      renderMatriculasList();
+    } else {
+      goBack();
+    }
+  }
+function calcularIngresosBrutoEsperado(mesSeleccionado) {
+  let total = 0;
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado) {
+        total += child.total || 0;
+      }
+    });
+  });
+  return total;
+}
+function calcularIngresosNetoEsperado(mesSeleccionado) {
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const totalEgresos = calcularEgresosTotales(
+    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
+  );
+  return brutoEsperado - totalEgresos;
+}
+function calcularIngresosBrutosTotales(mesSeleccionado) {
+  let total = 0;
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
+        total += child.total || 0;
+      }
+    });
+  });
+  return total;
+}
+function calcularIngresosNetosTotales(mesSeleccionado) {
+  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
+  const totalEgresos = calcularEgresosTotales(
+    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
+  );
+  return brutoTotales - totalEgresos;
+}
+async function attemptLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if(!username || !password){
+    alert("Completa usuario y contraseña");
+    return;
+  }
+  try {
+    // Buscar doc en la colección "users"
+    const docRef = doc(db, "users", username);
+    const docSnap = await getDoc(docRef);
+    if(!docSnap.exists()){
+      alert("Usuario no encontrado en la base de datos.");
+      return;
+    }
+    const userData = docSnap.data();
+    if(userData.password !== password){
+      alert("Contraseña incorrecta.");
+      return;
+    }
+
+    // Si coincide, login exitoso
+    currentUser = {
+      username: userData.username,
+      permisos: userData.permisos || {}
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    // Oculta login, muestra landing
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('landingPage').classList.remove('hidden');
 
-    async function attemptLogin() {
-      const usernameInput = document.getElementById("username");
-      const passwordInput = document.getElementById("password");
-      const errorDiv = document.getElementById("error-message");
+    // Muestra botón de logout
+    document.getElementById('logoutContainer').style.display = 'block';
 
-      if (!usernameInput || !passwordInput) {
-        errorDiv.textContent = "Error interno: no se encuentran los campos.";
-        return;
+    // Aplica permisos en la interfaz
+    applyPermissionsToMenus();
+
+  } catch (err) {
+    console.error("Error en login:", err);
+    alert("Error al iniciar sesión.");
+  }
+}
+
+function logout(){
+  // Limpiar la variable actual y el almacenamiento local
+  currentUser = null;
+  localStorage.removeItem("usuario");
+  localStorage.removeItem("permisos");
+
+  // Ocultar todos los contenedores de la app
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('macrosContainer').classList.remove('activeContainer');
+  document.getElementById('servicesContainer').classList.remove('activeContainer');
+  document.getElementById('matriculasContainer').classList.remove('activeContainer');
+  document.getElementById('finanzasContainer').classList.remove('activeContainer');
+  document.getElementById('usersContainer').style.display = 'none';
+
+  // Ocultar el contenedor de logout
+  document.getElementById('logoutContainer').style.display = 'none';
+
+  // Redirigir al login
+  window.location.href = "login.html";
+}
+
+function applyPermissionsToMenus(){
+  if(!currentUser) return;
+  const p = currentUser.permisos || {};
+  console.log("Aplicando permisos:", p);
+  
+  // Botones del landing
+  const btnMacros = document.querySelector(".landing-buttons button[onclick='goToMacros()']");
+  const btnServices = document.querySelector(".landing-buttons button[onclick='goToServices()']");
+  const btnMatriculas = document.querySelector(".landing-buttons button[onclick='goToMatriculas()']");
+  const btnFinanzas = document.querySelector(".landing-buttons button[onclick='goToFinanzas()']");
+
+  if(btnMacros) {
+    btnMacros.style.display = p.macros ? 'inline-block' : 'none';
+    console.log("btnMacros:", btnMacros.style.display);
+  }
+  if(btnServices) {
+    btnServices.style.display = p.services ? 'inline-block' : 'none';
+    console.log("btnServices:", btnServices.style.display);
+  }
+  if(btnMatriculas) {
+    btnMatriculas.style.display = p.matriculas ? 'inline-block' : 'none';
+    console.log("btnMatriculas:", btnMatriculas.style.display);
+  }
+  if(btnFinanzas) {
+    btnFinanzas.style.display = p.finanzas ? 'inline-block' : 'none';
+    console.log("btnFinanzas:", btnFinanzas.style.display);
+  }
+  
+  // Pestañas Macros
+  const tabNinos = document.getElementById('tabNinos');
+  if(tabNinos) {
+    tabNinos.style.display = p.macrosNinos ? 'block' : 'none';
+    console.log("tabNinos:", tabNinos.style.display);
+  }
+
+  // Pestañas Finanzas
+  const tabFinTotal = document.getElementById('tabFinanzasTotal');
+  const tabFinEgresos = document.getElementById('tabFinanzasEgresos');
+  const tabFinIngresos = document.getElementById('tabFinanzasIngresos');
+
+  if(tabFinTotal) {
+    tabFinTotal.style.display = p.finanzasTotal ? 'block' : 'none';
+    console.log("tabFinanzasTotal:", tabFinTotal.style.display);
+  }
+  if(tabFinEgresos) {
+    tabFinEgresos.style.display = p.finanzasEgresos ? 'block' : 'none';
+    console.log("tabFinanzasEgresos:", tabFinEgresos.style.display);
+  }
+  if(tabFinIngresos) {
+    tabFinIngresos.style.display = p.finanzasIngresos ? 'block' : 'none';
+    console.log("tabFinanzasIngresos:", tabFinIngresos.style.display);
+  }
+}
+
+
+
+  /****************************************************
+   * MACROS CODE (Con Firebase en lugar de localStorage)
+   ****************************************************/
+  let macros = [];
+  let nextMacroId = 1;
+  let nextAlumnoId = 1;
+  let editingMacroId = null;
+  let editingAlumnoId = null;
+  let generateCount = 0;
+  const anioActual = new Date().getFullYear();
+  const anioDosDig = anioActual.toString().slice(-2);
+  const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+
+  async function loadFromFirebaseMacros(){
+    try {
+      const docRef = doc(db, "data", "macrosAlumnos");
+      const docSnap = await getDoc(docRef);
+      if(docSnap.exists()){
+        const parsed = docSnap.data();
+        macros = parsed.macros || [];
+        nextMacroId = parsed.nextMacroId || 1;
+        nextAlumnoId = parsed.nextAlumnoId || 1;
+      } else {
+        macros = [];
+        nextMacroId = 1;
+        nextAlumnoId = 1;
       }
-
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
-
-      if (!username || !password) {
-        errorDiv.textContent = "Por favor completa ambos campos.";
-        return;
+    } catch(error){
+      console.error("Error loading macros from Firebase:", error);
+    }
+  }
+  async function saveToFirebaseMacros(){
+    try {
+      const docRef = doc(db, "data", "macrosAlumnos");
+      const obj = { macros, nextMacroId, nextAlumnoId };
+      await setDoc(docRef, obj, { merge: true });
+      console.log("Macros data saved to Firebase");
+    } catch(error){
+      console.error("Error saving macros to Firebase:", error);
+    }
+  }
+  async function initMacros() {
+    await loadFromFirebaseMacros();
+    mostrarMacros();
+  }
+  function mostrarMacros(){
+    const container = document.getElementById('macrosList');
+    container.innerHTML = '';
+    macros.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'macro-item';
+      const leftSpan = document.createElement('span');
+      leftSpan.textContent = `${m.titulo} (Alumnos: ${m.alumnos.length})`;
+      const rightDiv = document.createElement('div');
+      const btnEdit = document.createElement('button');
+      btnEdit.textContent = 'Editar';
+      btnEdit.onclick = () => editarMacro(m.id);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.onclick = () => eliminarMacro(m.id);
+      rightDiv.appendChild(btnEdit);
+      rightDiv.appendChild(btnDel);
+      div.appendChild(leftSpan);
+      div.appendChild(rightDiv);
+      container.appendChild(div);
+    });
+  }
+  function crearMacro(){
+    const titulo = document.getElementById('tituloMacro').value.trim();
+    if(!titulo){
+      alert('Ingresa un título para la macro');
+      return;
+    }
+    const nueva = { id: nextMacroId++, titulo, alumnos: [] };
+    macros.push(nueva);
+    document.getElementById('tituloMacro').value = '';
+    mostrarMacros();
+    saveToFirebaseMacros();
+    editarMacro(nueva.id);
+  }
+  function editarMacro(macroId){
+    editingMacroId = macroId;
+    const mac = macros.find(m => m.id === macroId);
+    if(!mac){
+      alert('Macro no encontrada');
+      return;
+    }
+    openTabMacros('Ninos');
+    document.getElementById('currentMacroTitle').textContent = mac.titulo;
+    mostrarAlumnosEnTablaMacros(mac.alumnos);
+  }
+  function eliminarMacro(macroId){
+    if(!confirm('¿Seguro de eliminar esta macro?')) return;
+    macros = macros.filter(m => m.id !== macroId);
+    mostrarMacros();
+    saveToFirebaseMacros();
+  }
+  function mostrarAlumnosEnTablaMacros(arr){
+    const tbody = document.getElementById('tbodyNinos');
+    tbody.innerHTML = '';
+    arr.forEach(al => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = al.nombre;
+      row.insertCell(1).textContent = al.apellidos;
+      row.insertCell(2).textContent = `CJ${anioDosDig}${al.codigoRestante}`;
+      row.insertCell(3).textContent = al.fechaInscripcion;
+      row.insertCell(4).textContent = al.importe.toFixed(2);
+      const accCell = row.insertCell(5);
+      const btnE = document.createElement('button');
+      btnE.textContent = '✎';
+      btnE.onclick = () => editarNinoMacros(al.id);
+      accCell.appendChild(btnE);
+      const btnD = document.createElement('button');
+      btnD.textContent = '🗑️';
+      btnD.style.marginLeft = '5px';
+      btnD.onclick = () => eliminarAlumnoMacros(al.id);
+      accCell.appendChild(btnD);
+    });
+  }
+  function agregarOguardarNino(){
+    if(!editingMacroId){
+      alert('No hay una macro seleccionada.');
+      return;
+    }
+    const mac = macros.find(m => m.id === editingMacroId);
+    if(!mac){
+      alert('Macro no encontrada');
+      return;
+    }
+    const nombre = document.getElementById('nombre').value.trim().toUpperCase();
+    const apellidos = document.getElementById('apellidos').value.trim().toUpperCase();
+    const codigoRestante = document.getElementById('codigoRestante').value.trim().toUpperCase();
+    const fechaInscripcion = document.getElementById('fechaInscripcion').value;
+    const importe = parseFloat(document.getElementById('importe').value);
+    if(!nombre || !apellidos || !codigoRestante || !fechaInscripcion || isNaN(importe)){
+      alert('Completa todos los campos');
+      return;
+    }
+    if(editingAlumnoId === null){
+      const nuevo = {
+        id: nextAlumnoId++,
+        nombre,
+        apellidos,
+        codigoRestante,
+        fechaInscripcion,
+        importe
+      };
+      mac.alumnos.push(nuevo);
+    } else {
+      const idx = mac.alumnos.findIndex(a => a.id === editingAlumnoId);
+      if(idx >= 0){
+        mac.alumnos[idx].nombre = nombre;
+        mac.alumnos[idx].apellidos = apellidos;
+        mac.alumnos[idx].codigoRestante = codigoRestante;
+        mac.alumnos[idx].fechaInscripcion = fechaInscripcion;
+        mac.alumnos[idx].importe = importe;
       }
+      editingAlumnoId = null;
+      document.getElementById('btnNinoPrincipal').textContent = 'Agregar Niño';
+    }
+    document.getElementById('nombre').value = '';
+    document.getElementById('apellidos').value = '';
+    document.getElementById('codigoRestante').value = '';
+    document.getElementById('fechaInscripcion').value = '';
+    document.getElementById('importe').value = '';
+    mostrarAlumnosEnTablaMacros(mac.alumnos);
+    saveToFirebaseMacros();
+  }
+  function editarNinoMacros(alumnoId){
+    const mac = macros.find(m => m.id === editingMacroId);
+    if(!mac) return;
+    const al = mac.alumnos.find(a => a.id === alumnoId);
+    if(!al) return;
+    editingAlumnoId = alumnoId;
+    document.getElementById('nombre').value = al.nombre;
+    document.getElementById('apellidos').value = al.apellidos;
+    document.getElementById('codigoRestante').value = al.codigoRestante;
+    document.getElementById('fechaInscripcion').value = al.fechaInscripcion;
+    document.getElementById('importe').value = al.importe;
+    document.getElementById('btnNinoPrincipal').textContent = 'Guardar Niño';
+  }
+  function eliminarAlumnoMacros(alumnoId){
+    const mac = macros.find(m => m.id === editingMacroId);
+    if(!mac) return;
+    mac.alumnos = mac.alumnos.filter(a => a.id !== alumnoId);
+    mostrarAlumnosEnTablaMacros(mac.alumnos);
+    saveToFirebaseMacros();
+  }
+  function guardarYVolver(){
+    openTabMacros('Macros');
+    mostrarMacros();
+    saveToFirebaseMacros();
+  }
+  function generarTxt(){
+    if(!editingMacroId){
+      alert('No hay macro seleccionada.');
+      return;
+    }
+    const mac = macros.find(m => m.id === editingMacroId);
+    if(!mac){
+      alert('Macro no encontrada');
+      return;
+    }
+    generateCount++;
+    const hoy = new Date();
+    const fechaFact = hoy.getFullYear().toString() + String(hoy.getMonth()+1).padStart(2, '0') + String(hoy.getDate()).padStart(2, '0');
+    const ruc = '00018176347';
+    const moneda = 'PEN';
+    const numeroClase = '000';
+    const tipoActu = 'P';
+    let cabecera = '01' + ruc + numeroClase + moneda + fechaFact + '001' + ' '.repeat(7) + tipoActu + ' '.repeat(322) + '\r\n';
+    let contenido = cabecera;
+    const anioSiguiente = hoy.getFullYear() + 1;
+    const fechaBloqueo = `${anioSiguiente}0930`;
+    let contadorRegistros = 0;
+    let sumaMin = 0, sumaMax = 0;
+    mac.alumnos.forEach(item => {
+      const fechaObj = new Date(item.fechaInscripcion);
+      const anio = fechaObj.getFullYear();
+      const mesInicio = fechaObj.getMonth();
+      const diaInscripcion = fechaObj.getDate();
+      for(let m = mesInicio; m < 12; m++){
+        const nombreCompleto = (item.apellidos + ' ' + item.nombre).substring(0,30).padEnd(30, ' ');
+        const yy = anio.toString().slice(-2);
+        const mesNombre = meses[m];
+        let codigoConc = `0CJ${yy}${item.codigoRestante}${mesNombre}`.substring(0,40).padEnd(40, ' ');
+        const mesStr = String(m+1).padStart(2, '0');
+        const diaStr = String(diaInscripcion).padStart(2, '0');
+        const fechaVenc = `${anio}${mesStr}${diaStr}`;
+        const importeCentavos = Math.round(item.importe * 100);
+        const importeStr = importeCentavos.toString().padStart(15, '0');
+        sumaMin += importeCentavos;
+        sumaMax += importeCentavos;
+        let linea = '02' + nombreCompleto + codigoConc + ' '.repeat(8) + fechaVenc + fechaBloqueo + '0'.repeat(2)
+          + importeStr + importeStr + '0'.repeat(180) + 'L000000000000000' + '\r\n';
+        contenido += linea;
+        contadorRegistros++;
+      }
+    });
+    let linea03 = '03';
+    linea03 += String(contadorRegistros).padStart(9, '0');
+    linea03 += String(sumaMin).padStart(18, '0');
+    linea03 += String(sumaMax).padStart(18, '0');
+    linea03 += '0'.repeat(18);
+    linea03 += ' '.repeat(295);
+    contenido += linea03;
+    const filename = `carga_bbva_${fechaFact}_${generateCount}.txt`;
+    const blob = new Blob([contenido], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+  function openTabMacros(tabName){
+    document.getElementById('contentMacros').classList.remove('activeTabContent');
+    document.getElementById('contentNinos').classList.remove('activeTabContent');
+    document.getElementById('tabMacros').classList.remove('activeTab');
+    document.getElementById('tabNinos').classList.remove('activeTab');
+    if(tabName === 'Macros'){
+      document.getElementById('contentMacros').classList.add('activeTabContent');
+      document.getElementById('tabMacros').classList.add('activeTab');
+    } else {
+      document.getElementById('contentNinos').classList.add('activeTabContent');
+      document.getElementById('tabNinos').classList.add('activeTab');
+    }
+  }
 
-      try {
-        const userDoc = await db.collection("users").doc(username).get();
-
-        if (!userDoc.exists) {
-          errorDiv.textContent = "Usuario no encontrado.";
-          return;
-        }
-
-        const userData = userDoc.data();
-        if (userData.password !== password) {
-          errorDiv.textContent = "Contraseña incorrecta.";
-          return;
-        }
-
-        // Guardar permisos en localStorage
-        localStorage.setItem("permisos", JSON.stringify(userData.permisos));
-        localStorage.setItem("usuario", username);
-
-        // Redirigir al dashboard
-        window.location.href = "dashboard.html";
-
-      } catch (error) {
-        console.error("Error al iniciar sesión:", error);
-        errorDiv.textContent = "Ocurrió un error. Intenta nuevamente.";
+  /**************************************************************
+   * ADMIN SERVICES
+   **************************************************************/
+  let services = [];
+  let editingVariantId = null;
+  let nextServiceId = 1;
+  let nextVariantId = 1;
+  let nextServiceChildId = 1;
+  let serviceCheckDone = false; 
+  let MATRICULA_ID = null;
+  let editingServiceId = null;
+  let editingServiceChildId = null;
+  async function loadFromFirebaseServices(){
+    try {
+      const docRef = doc(db, "data", "servicesData");
+      const docSnap = await getDoc(docRef);
+      if(docSnap.exists()){
+        const parsed = docSnap.data();
+        services = parsed.services || [];
+        nextServiceId = parsed.nextServiceId || 1;
+        nextVariantId = parsed.nextVariantId || 1;
+        nextServiceChildId = parsed.nextServiceChildId || 1;
+      } else {
+        services = [];
+        nextServiceId = 1;
+        nextVariantId = 1;
+        nextServiceChildId = 1;
+      }
+    } catch(error){
+      console.error("Error loading services from Firebase:", error);
+    }
+  }
+  async function saveToFirebaseServices(){
+    try {
+      const docRef = doc(db, "data", "servicesData");
+      const obj = { services, nextServiceId, nextVariantId, nextServiceChildId };
+      await setDoc(docRef, obj, { merge: true });
+      console.log("Services data saved to Firebase");
+    } catch(error){
+      console.error("Error saving services to Firebase:", error);
+    }
+  }
+  async function initServices(){
+    await loadFromFirebaseServices();
+    ensureMatriculaService();
+    showServicesList();
+    setupDaysButtons();
+  }
+  function ensureMatriculaService(){
+    if(serviceCheckDone) return;
+    serviceCheckDone = true;
+    let mat = services.find(s => s.title === 'Matrícula');
+    if(!mat){
+      mat = {
+        id: nextServiceId++,
+        title: 'Matrícula',
+        variants: [],
+        children: []
+      };
+      services.unshift(mat);
+      for(let i = 1; i <= 5; i++){
+        const v = {
+          id: nextVariantId++,
+          name: i.toString(),
+          price: 480,
+          days: ['LUN','MAR','MIE','JUE','VIE'],
+          start: '07:30',
+          end: '13:00'
+        };
+        mat.variants.push(v);
+      }
+      saveToFirebaseServices();
+    }
+    MATRICULA_ID = mat.id;
+  }
+  function openTabServices(tabName){
+    document.getElementById('contentServicesMain').classList.remove('activeTabContent');
+    document.getElementById('contentServicesVariants').classList.remove('activeTabContent');
+    document.getElementById('contentServicesChildren').classList.remove('activeTabContent');
+    document.getElementById('tabServicesMain').classList.remove('activeTab');
+    document.getElementById('tabServicesVariants').classList.remove('activeTab');
+    document.getElementById('tabServicesChildren').classList.remove('activeTab');
+    if(tabName === 'ServicesMain'){
+      document.getElementById('contentServicesMain').classList.add('activeTabContent');
+      document.getElementById('tabServicesMain').classList.add('activeTab');
+    } else if(tabName === 'ServicesVariants'){
+      document.getElementById('contentServicesVariants').classList.add('activeTabContent');
+      document.getElementById('tabServicesVariants').classList.add('activeTab');
+    } else {
+      document.getElementById('contentServicesChildren').classList.add('activeTabContent');
+      document.getElementById('tabServicesChildren').classList.add('activeTab');
+    }
+  }
+  function showServicesList(){
+    const container = document.getElementById('servicesList');
+    container.innerHTML = '';
+    services.sort((a, b) => {
+      if(a.title === 'Matrícula') return -1;
+      if(b.title === 'Matrícula') return 1;
+      return 0;
+    });
+    services.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'service-item';
+      const leftSpan = document.createElement('span');
+      leftSpan.textContent = `${s.title} (Variantes: ${s.variants.length}) (Niños: ${s.children.length})`;
+      const rightDiv = document.createElement('div');
+      if(s.title !== 'Matrícula'){
+        const btnEdit = document.createElement('button');
+        btnEdit.textContent = 'Editar';
+        btnEdit.onclick = () => editService(s.id);
+        rightDiv.appendChild(btnEdit);
+      }
+      const btnMat = document.createElement('button');
+      btnMat.textContent = 'Administrar Niños';
+      btnMat.onclick = () => openServiceChildren(s.id);
+      rightDiv.appendChild(btnMat);
+      if(s.title !== 'Matrícula'){
+        const btnDel = document.createElement('button');
+        btnDel.textContent = 'Eliminar';
+        btnDel.onclick = () => deleteService(s.id);
+        rightDiv.appendChild(btnDel);
+      }
+      div.appendChild(leftSpan);
+      div.appendChild(rightDiv);
+      container.appendChild(div);
+    });
+  }
+  function crearService(){
+    const title = document.getElementById('tituloService').value.trim();
+    if(!title){
+      alert('Ingresa un título para el servicio');
+      return;
+    }
+    if(title === 'Matrícula'){
+      alert('Ya existe "Matrícula"');
+      return;
+    }
+    const newService = { id: nextServiceId++, title, variants: [], children: [] };
+    services.push(newService);
+    document.getElementById('tituloService').value = '';
+    showServicesList();
+    saveToFirebaseServices();
+    editService(newService.id);
+  }
+  function editService(serviceId){
+    const serv = services.find(s => s.id === serviceId);
+    if(!serv) return;
+    if(serv.title === 'Matrícula'){
+      alert('No se puede editar el servicio "Matrícula"');
+      return;
+    }
+    editingServiceId = serviceId;
+    openTabServices('ServicesVariants');
+    document.getElementById('tabServicesVariants').style.display = 'block';
+    document.getElementById('currentServiceTitle').textContent = serv.title;
+    clearVariantForm();
+    renderVariantsTable(serv.variants);
+  }
+  function deleteService(serviceId){
+    if(!confirm('¿Seguro de eliminar este servicio?')) return;
+    services = services.filter(s => s.id !== serviceId);
+    showServicesList();
+    saveToFirebaseServices();
+  }
+  /* Variants logic */
+  function setupDaysButtons(){
+    const dayLabels = ['LUN','MAR','MIE','JUE','VIE'];
+    const container = document.getElementById('daysContainer');
+    container.innerHTML = '';
+    dayLabels.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = 'day-btn';
+      btn.textContent = d;
+      btn.onclick = () => btn.classList.toggle('selected');
+      container.appendChild(btn);
+    });
+  }
+  function clearVariantForm(){
+    editingVariantId = null;
+    document.getElementById('variantName').value = '';
+    document.getElementById('variantPrice').value = '';
+    document.getElementById('variantStart').value = '';
+    document.getElementById('variantEnd').value = '';
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
+  }
+  function agregarOguardarVariante(){
+    if(!editingServiceId){
+      alert('No hay servicio seleccionado.');
+      return;
+    }
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv){
+      alert('Servicio no encontrado');
+      return;
+    }
+    const name = document.getElementById('variantName').value.trim();
+    const price = parseFloat(document.getElementById('variantPrice').value);
+    const startT = document.getElementById('variantStart').value;
+    const endT = document.getElementById('variantEnd').value;
+    const selectedDays = [];
+    document.querySelectorAll('.day-btn.selected').forEach(btn => selectedDays.push(btn.textContent));
+    if(!name || isNaN(price) || !startT || !endT){
+      alert('Completa todos los campos de la variante');
+      return;
+    }
+    if(editingVariantId === null){
+      const newVar = {
+        id: nextVariantId++,
+        name,
+        price,
+        days: selectedDays,
+        start: startT,
+        end: endT
+      };
+      serv.variants.push(newVar);
+    } else {
+      const idx = serv.variants.findIndex(v => v.id === editingVariantId);
+      if(idx >= 0){
+        serv.variants[idx].name = name;
+        serv.variants[idx].price = price;
+        serv.variants[idx].days = selectedDays;
+        serv.variants[idx].start = startT;
+        serv.variants[idx].end = endT;
+      }
+      editingVariantId = null;
+      document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
+    }
+    clearVariantForm();
+    renderVariantsTable(serv.variants);
+    saveToFirebaseServices();
+  }
+  function renderVariantsTable(arr){
+    const tbody = document.getElementById('tbodyVariants');
+    tbody.innerHTML = '';
+    arr.forEach(v => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = v.name;
+      row.insertCell(1).textContent = v.days.join(', ');
+      row.insertCell(2).textContent = `S/${v.price}`;
+      row.insertCell(3).textContent = `${v.start} - ${v.end}`;
+      const accCell = row.insertCell(4);
+      const btnEd = document.createElement('button');
+      btnEd.textContent = 'editar';
+      btnEd.onclick = () => editVariant(v.id);
+      accCell.appendChild(btnEd);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = ' x ';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => deleteVariant(v.id);
+      accCell.appendChild(btnDel);
+    });
+  }
+  function editVariant(variantId){
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv) return;
+    const vr = serv.variants.find(v => v.id === variantId);
+    if(!vr) return;
+    editingVariantId = variantId;
+    document.getElementById('variantName').value = vr.name;
+    document.getElementById('variantPrice').value = vr.price;
+    document.getElementById('variantStart').value = vr.start;
+    document.getElementById('variantEnd').value = vr.end;
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      if(vr.days.includes(btn.textContent)) btn.classList.add('selected');
+      else btn.classList.remove('selected');
+    });
+    document.getElementById('btnVariantPrincipal').textContent = 'Guardar Variante';
+  }
+  function deleteVariant(variantId){
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv) return;
+    serv.variants = serv.variants.filter(v => v.id !== variantId);
+    renderVariantsTable(serv.variants);
+    saveToFirebaseServices();
+  }
+  function doneVariants(){
+    openTabServices('ServicesMain');
+    showServicesList();
+    saveToFirebaseServices();
+  }
+  /* Administrar Niños */
+  function openServiceChildren(serviceId){
+    editingServiceId = serviceId;
+    const serv = services.find(s => s.id === serviceId);
+    if(!serv) return;
+    openTabServices('ServicesChildren');
+    document.getElementById('tabServicesChildren').style.display = 'block';
+    document.getElementById('currentServiceTitleChild').textContent = serv.title;
+    clearChildForm();
+    renderChildrenTable(serv.children);
+    const lab = document.getElementById('labelVariantChild');
+    if(serv.title === 'Matrícula') lab.textContent = 'Año';
+    else lab.textContent = 'Variante';
+    const sel = document.getElementById('childVariantSelect');
+    sel.innerHTML = '';
+    if(serv.variants.length === 0){
+      const opt = document.createElement('option');
+      opt.text = 'Sin variantes';
+      sel.add(opt);
+      sel.disabled = true;
+    } else if(serv.variants.length === 1){
+      sel.disabled = true;
+      const v = serv.variants[0];
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.name;
+      sel.add(opt);
+    } else {
+      sel.disabled = false;
+      serv.variants.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = v.name;
+        sel.appendChild(opt);
+      });
+    }
+  }
+  function clearChildForm(){
+    editingServiceChildId = null;
+    document.getElementById('childName').value = '';
+    document.getElementById('childLastname').value = '';
+    document.getElementById('childDate').value = '';
+    document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+  }
+  function renderChildrenTable(arr){
+    const tbody = document.getElementById('tbodyChildren');
+    tbody.innerHTML = '';
+    const serv = services.find(s => s.id === editingServiceId);
+    arr.forEach(ch => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = ch.name;
+      row.insertCell(1).textContent = ch.lastname;
+      row.insertCell(2).textContent = ch.date;
+      const variant = serv.variants.find(v => v.id === ch.variantId);
+      row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
+      const accCell = row.insertCell(4);
+      const btnEd = document.createElement('button');
+      btnEd.textContent = '✎';
+      btnEd.onclick = () => editServiceChild(ch.id);
+      accCell.appendChild(btnEd);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = '🗑️';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => deleteServiceChild(ch.id);
+      accCell.appendChild(btnDel);
+    });
+  }
+  function agregarOguardarChild(){
+    if(!editingServiceId){
+      alert('No hay servicio seleccionado');
+      return;
+    }
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv) return;
+    const name = document.getElementById('childName').value.trim().toUpperCase();
+    const lastname = document.getElementById('childLastname').value.trim().toUpperCase();
+    const dateIn = document.getElementById('childDate').value;
+    const sel = document.getElementById('childVariantSelect');
+    let variantId = null;
+    if(sel.options.length === 1 && !sel.disabled){
+      variantId = parseInt(sel.options[0].value);
+    } else if(!sel.disabled){
+      variantId = parseInt(sel.value);
+    } else if(sel.disabled && serv.variants.length === 1){
+      variantId = serv.variants[0].id;
+    }
+    if(!name || !lastname || !dateIn){
+      alert('Completa todos los campos');
+      return;
+    }
+if(editingServiceChildId === null){
+  let precio = 0;
+  // Buscar la variante seleccionada según variantId obtenido del select
+  if(serv.variants && serv.variants.length > 0) {
+    let variant = serv.variants.find(v => v.id === variantId);
+    if(variant) {
+      precio = variant.price; // Asigna el precio de la variante
+    }
+  }
+  const nuevo = {
+    id: nextServiceChildId++,
+    name,
+    lastname,
+    date: dateIn,
+    variantId,
+    mesRegistro: getYearMonth(), // Guarda el mes en que se registró
+    total: precio,              // Aquí se asigna el precio obtenido
+    ficha: {},
+    fichaCompleta: false,
+    pagoPension: false,         // Usaremos esta variable unificada para "Pagó Pensión/Mensualidad"
+    pensionesAtrasadas: 0,
+    lastPagoCheck: getYearMonth()
+  };
+  serv.children.push(nuevo);
+} else {
+  // En el caso de editar, actualizamos también el total:
+  const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
+  if(idx >= 0){
+    serv.children[idx].name = name;
+    serv.children[idx].lastname = lastname;
+    serv.children[idx].date = dateIn;
+    serv.children[idx].variantId = variantId;
+    let precio = 0;
+    if(serv.variants && serv.variants.length > 0) {
+      let variant = serv.variants.find(v => v.id === variantId);
+      if(variant) {
+        precio = variant.price;
       }
     }
-  </script>
+    serv.children[idx].total = precio;
+  }
+  editingServiceChildId = null;
+  document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+}
+
+    clearChildForm();
+    renderChildrenTable(serv.children);
+    saveToFirebaseServices();
+  }
+  function editServiceChild(childId){
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv) return;
+    const ch = serv.children.find(c => c.id === childId);
+    if(!ch) return;
+    editingServiceChildId = childId;
+    document.getElementById('childName').value = ch.name;
+    document.getElementById('childLastname').value = ch.lastname;
+    document.getElementById('childDate').value = ch.date;
+    document.getElementById('btnChildPrincipal').textContent = 'Guardar Niño';
+    const sel = document.getElementById('childVariantSelect');
+    if(!sel.disabled && ch.variantId) sel.value = ch.variantId;
+  }
+  function deleteServiceChild(childId){
+    const serv = services.find(s => s.id === editingServiceId);
+    if(!serv) return;
+    serv.children = serv.children.filter(c => c.id !== childId);
+    renderChildrenTable(serv.children);
+    saveToFirebaseServices();
+  }
+  function doneChildren(){
+    openTabServices('ServicesMain');
+    showServicesList();
+    saveToFirebaseServices();
+  }
+  function getVariantName(varId){
+    if(!varId) return null;
+    for(const s of services){
+      const fv = s.variants.find(v => v.id === varId);
+      if(fv) return fv.name;
+    }
+    return null;
+  }
+  function getYearMonth(){
+    const d = new Date();
+    return d.getFullYear().toString() + '-' + String(d.getMonth()+1).padStart(2, '0');
+  }
+
+  /**************************************************************
+   * FINANZAS (NUEVO MENÚ)
+   **************************************************************/
+  // Variables para finanzas
+  let finanzasData = {
+    egresos: [], // Array de objetos de egresos
+    ingresos: [] // Se obtendrán de los registros de servicios (niños)
+  };
+  // Se espera que cada registro de egreso tenga: id, nombre, tipo, subtipo, cantidad, descuento, mes, año
+  let nextEgresoId = 1;
+  // Para simplificar, los ingresos se calcularán a partir de los datos ya almacenados en servicios
+
+  // Inicialización de opciones del selector de mes (por ejemplo, últimos 12 meses)
+  function initSelectorMesFinanzas(){
+    const select = document.getElementById('finanzasMes');
+    select.innerHTML = '';
+    const d = new Date();
+    // Por defecto mostrar el mes actual y los 11 anteriores
+    for(let i = 0; i < 12; i++){
+      let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      let mes = fecha.getMonth() + 1;
+      let anio = fecha.getFullYear();
+      let option = document.createElement('option');
+      option.value = `${anio}-${mes.toString().padStart(2,'0')}`;
+      option.textContent = `${meses[fecha.getMonth()]} ${anio}`;
+      select.appendChild(option);
+    }
+  }
+  // Función para cambiar de mes en Finanzas
+  function cambiarMesFinanzas(){
+    renderFinanzas();
+  }
+  function cargarSubtiposEgresos() {
+  const sel = document.getElementById('egresoSubtipo');
+  sel.innerHTML = '<option value="">-- Selecciona Subtipo --</option>';
+  subtiposEgresos.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st;
+    opt.textContent = st;
+    sel.appendChild(opt);
+  });
+  }
+function agregarNuevoSubtipo() {
+  const nuevo = prompt("Ingresa el nuevo subtipo de egreso:");
+  if(nuevo && nuevo.trim() !== "") {
+    subtiposEgresos.push(nuevo.trim());
+    cargarSubtiposEgresos();
+    document.getElementById('egresoSubtipo').value = nuevo.trim();
+    saveFinanzasData(); // Guarda la lista actualizada de subtipos en Firebase
+  }
+}
+
+  // Función para inicializar Finanzas
+  async function initFinanzas(){
+  initSelectorMesFinanzas();
+  await loadFinanzasData();  // Cargar datos guardados en Firebase
+  cargarSubtiposEgresos();   // Para que el select de subtipos se actualice
+  renderFinanzas();
+  actualizarGraficosFinanzas();
+  }
+
+  // Renderiza la vista de Finanzas según el mes seleccionado
+function renderFinanzas(){
+  const mesSeleccionado = document.getElementById('finanzasMes').value;
+  // Filtrar egresos para el mes seleccionado
+  const egresosFiltrados = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado);
+
+  // Cálculos para egresos
+  const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
+  const totalEgresosFijos = calcularEgresosTipo(egresosFiltrados, "Fijo");
+  const totalEgresos = calcularEgresosTotales(egresosFiltrados);
+
+  // Cálculos para ingresos
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const netoEsperado = calcularIngresosNetoEsperado(mesSeleccionado);
+  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
+  const netoTotales = calcularIngresosNetosTotales(mesSeleccionado);
+
+  // Actualiza las tarjetas
+  document.getElementById('egresosVariables').textContent = "S/ " + totalEgresosVariables.toFixed(2);
+  document.getElementById('egresosFijos').textContent = "S/ " + totalEgresosFijos.toFixed(2);
+  document.getElementById('egresosTotales').textContent = "S/ " + totalEgresos.toFixed(2);
+  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetosEsperados').textContent = "S/ " + netoEsperado.toFixed(2);
+  document.getElementById('ingresosBrutosTotales').textContent = "S/ " + brutoTotales.toFixed(2);
+  document.getElementById('ingresosNetosTotales').textContent = "S/ " + netoTotales.toFixed(2);
+  // También podrías asignar ingresosEsperados e ingresosNetos según tu lógica
+  document.getElementById('ingresosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetos').textContent = "S/ " + netoTotales.toFixed(2);
+
+  // Si deseas actualizar un indicador de variación, por ejemplo:
+  const variacion = netoTotales; // o alguna otra fórmula
+  const indicadorEl = document.getElementById('indicadorVariacion');
+  indicadorEl.textContent = "Variación: " + (variacion >= 0 ? "+" : "") + variacion.toFixed(2) + "%";
+  if (variacion < 0) {
+    indicadorEl.style.color = "red";
+  } else {
+    indicadorEl.style.color = "";
+  }
+
+  // Renderizar tablas y actualizar gráficos (con tus funciones actuales)
+  renderTablaEgresos(egresosFiltrados);
+  renderTablaIngresos(mesSeleccionado);
+  actualizarGraficosFinanzas();
+}
+
+  function calcularEgresosTipo(egresos, tipo){
+    return egresos.filter(e => e.tipo === tipo).reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
+  }
+  function calcularEgresosTotales(egresos){
+    return egresos.reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
+  }
+  function renderTablaEgresos(egresos){
+    const tbody = document.getElementById('tablaEgresos').querySelector('tbody');
+    tbody.innerHTML = '';
+    egresos.forEach(e => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = e.nombre;
+      row.insertCell(1).textContent = e.tipo;
+      row.insertCell(2).textContent = e.subtipo;
+      row.insertCell(3).textContent = e.cantidad;
+      row.insertCell(4).textContent = e.descuento;
+      row.insertCell(5).textContent = (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)).toFixed(2);
+      const accCell = row.insertCell(6);
+      const btnEd = document.createElement('button');
+      btnEd.textContent = 'Editar';
+      btnEd.onclick = () => editarEgreso(e.id);
+      accCell.appendChild(btnEd);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => eliminarEgreso(e.id);
+      accCell.appendChild(btnDel);
+    });
+  }
+function renderTablaIngresos(mesSeleccionado) {
+  const tbody = document.getElementById('tablaIngresos').querySelector('tbody');
+  tbody.innerHTML = '';
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado) {
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = child.name + " " + child.lastname;
+        const tipo = (serv.title === "Matrícula") ? "Matrícula" : "Taller";
+        row.insertCell(1).textContent = tipo;
+        row.insertCell(2).textContent = (tipo === "Taller" && child.variantId) ? getVariantName(child.variantId) : "";
+        row.insertCell(3).textContent = "S/ " + (child.total || 0).toFixed(2);
+        // Nueva celda para el botón "Pagó Mensualidad"
+        const cellPagoMensual = row.insertCell(4);
+        const btnPagoMensual = document.createElement('button');
+        btnPagoMensual.textContent = child.pagoPension ? "Sí" : "No";
+btnPagoMensual.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
+        btnPagoMensual.style.color = "#fff";
+        btnPagoMensual.style.border = "none";
+        btnPagoMensual.style.borderRadius = "6px";
+        btnPagoMensual.style.padding = "6px 10px";
+        btnPagoMensual.onclick = () => {
+  child.pagoPension = !child.pagoPension;
+  btnPagoMensual.textContent = child.pagoPension ? "Sí" : "No";
+  btnPagoMensual.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
+  saveToFirebaseServices();
+  renderTablaIngresos(mesSeleccionado);
+  renderFinanzas();
+};
+        cellPagoMensual.appendChild(btnPagoMensual);
+      }
+    });
+  });
+}
+
+
+
+  function agregarEgreso(){
+  const nombre = document.getElementById('egresoNombre').value.trim();
+  const tipo = document.getElementById('egresoTipo').value;
+  const subtipo = document.getElementById('egresoSubtipo').value;
+  const cantidad = document.getElementById('egresoCantidad').value;
+  const descuento = document.getElementById('egresoDescuento').value;
+  if(!nombre || !tipo || !subtipo || !cantidad){
+    alert("Completa todos los campos del egreso");
+    return;
+  }
+  const mesAnio = document.getElementById('finanzasMes').value.split('-');
+  const anio = mesAnio[0];
+  const mes = parseInt(mesAnio[1]);
+  const nuevo = {
+    id: nextEgresoId++,
+    nombre,
+    tipo,
+    subtipo,
+    cantidad,
+    descuento: descuento || 0,
+    anio: anio,
+    mes: mes
+  };
+  finanzasData.egresos.push(nuevo);
+  // Limpiar campos
+  document.getElementById('egresoNombre').value = '';
+  document.getElementById('egresoTipo').value = '';
+  document.getElementById('egresoSubtipo').value = '';
+  document.getElementById('egresoCantidad').value = '';
+  document.getElementById('egresoDescuento').value = '';
+  renderFinanzas();
+  saveFinanzasData(); // Guarda en Firebase
+}
+
+  function editarEgreso(id){
+    // Función para editar egreso: se deben cargar los datos en el formulario y luego actualizar el registro.
+    const egreso = finanzasData.egresos.find(e => e.id === id);
+    if(!egreso) return;
+    document.getElementById('egresoNombre').value = egreso.nombre;
+    document.getElementById('egresoTipo').value = egreso.tipo;
+    document.getElementById('egresoSubtipo').value = egreso.subtipo;
+    document.getElementById('egresoCantidad').value = egreso.cantidad;
+    document.getElementById('egresoDescuento').value = egreso.descuento;
+    // Eliminar el registro para que al agregar se reescriba
+    finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
+  }
+  function eliminarEgreso(id){
+  if(!confirm("¿Eliminar egreso?")) return;
+  finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
+  renderFinanzas();
+  saveFinanzasData(); // Asegúrate de llamar a guardar datos en Firebase
+}
+
+  // Funciones para actualizar gráficos (placeholders)
+function actualizarGraficosFinanzas(){
+// Obtener datos para Total Mensual
+const mesSeleccionado = document.getElementById('finanzasMes').value;
+const ingresosNetosTotales = calcularIngresosNetosTotales(mesSeleccionado);
+const ingresosNetosEsperados = calcularIngresosNetoEsperado(mesSeleccionado);
+const faltante = Math.max(ingresosNetosEsperados - ingresosNetosTotales, 0);
+
+const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
+if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
+  window.chartFinanzasCircular.destroy();
+}
+window.chartFinanzasCircular = new Chart(ctxPastel, {
+  type: 'pie',
+  data: {
+    labels: ['Pagado', 'Falta'],
+    datasets: [{
+      data: [ingresosNetosTotales, faltante],
+      backgroundColor: ['#3BB273', '#E74C3C']
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false
+  }
+});
+const totalFijos = calcularEgresosTipo(
+  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
+  "Fijo"
+);
+const totalVariables = calcularEgresosTipo(
+  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
+  "Variable"
+);
+const ctxPastelEgresos = document.getElementById('chartEgresosCircular').getContext('2d');
+if (window.chartEgresosCircular && typeof window.chartEgresosCircular.destroy === 'function') {
+  window.chartEgresosCircular.destroy();
+}
+window.chartEgresosCircular = new Chart(ctxPastelEgresos, {
+  type: 'pie',
+  data: {
+    labels: ['Fijos', 'Variables'],
+    datasets: [{
+      data: [totalFijos, totalVariables],
+      backgroundColor: ['#4a90e2', '#f1c40f']
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+let ingresosMatricula = 0, ingresosTaller = 0;
+services.forEach(serv => {
+  serv.children.forEach(child => {
+    if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
+      if(serv.title === "Matrícula") {
+        ingresosMatricula += child.total || 0;
+      } else {
+        ingresosTaller += child.total || 0;
+      }
+    }
+  });
+});
+const ctxPastelIngresos = document.getElementById('chartIngresosCircular').getContext('2d');
+if (window.chartIngresosCircular && typeof window.chartIngresosCircular.destroy === 'function') {
+  window.chartIngresosCircular.destroy();
+}
+window.chartIngresosCircular = new Chart(ctxPastelIngresos, {
+  type: 'pie',
+  data: {
+    labels: ['Matrícula', 'Taller'],
+    datasets: [{
+      data: [ingresosMatricula, ingresosTaller],
+      backgroundColor: ['#3BB273', '#f1c40f']
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+}
+function obtenerDatosLinealIngresosNetos(){
+  const labels = [];
+  const datos = [];
+  const d = new Date();
+  // Ejemplo: últimos 12 meses
+  for(let i = 11; i >= 0; i--){
+    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    let mes = fecha.getMonth() + 1;
+    let anio = fecha.getFullYear();
+    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
+    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
+    datos.push(calcularIngresosNetosTotales(key));
+  }
+  return { labels, datos };
+}
+
+const datosLineal = obtenerDatosLinealIngresosNetos();
+const ctxLineal = document.getElementById('chartFinanzasLinealTotal').getContext('2d');
+if (window.chartFinanzasLinealTotal && typeof window.chartFinanzasLinealTotal.destroy === 'function') {
+  window.chartFinanzasLinealTotal.destroy();
+}
+window.chartFinanzasLinealTotal = new Chart(ctxLineal, {
+  type: 'line',
+  data: {
+    labels: datosLineal.labels,
+    datasets: [{
+      label: 'Ingresos Netos Totales',
+      data: datosLineal.datos,
+      borderColor: '#3BB273',
+      backgroundColor: 'rgba(59,178,115,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+const datosLinealIngresos = obtenerDatosLinealIngresosNetos(); // Reutilizando la función definida para Total Mensual
+const ctxLinealIngresos = document.getElementById('chartIngresosLineal').getContext('2d');
+if (window.chartIngresosLineal && typeof window.chartIngresosLineal.destroy === 'function') {
+  window.chartIngresosLineal.destroy();
+}
+window.chartIngresosLineal = new Chart(ctxLinealIngresos, {
+  type: 'line',
+  data: {
+    labels: datosLinealIngresos.labels,
+    datasets: [{
+      label: 'Ingresos Netos Totales',
+      data: datosLinealIngresos.datos,
+      borderColor: '#3BB273',
+      backgroundColor: 'rgba(59,178,115,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+function obtenerDatosLinealEgresos(){
+  const labels = [];
+  const datos = [];
+  const d = new Date();
+  for(let i = 11; i >= 0; i--){
+    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    let mes = fecha.getMonth() + 1;
+    let anio = fecha.getFullYear();
+    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
+    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
+    // Suma total de egresos para ese mes
+    const egresosMes = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === key);
+    datos.push(calcularEgresosTotales(egresosMes));
+  }
+  return { labels, datos };
+}
+
+const datosLinealEgresos = obtenerDatosLinealEgresos();
+const ctxLinealEgresos = document.getElementById('chartEgresosLineal').getContext('2d');
+if (window.chartEgresosLineal && typeof window.chartEgresosLineal.destroy === 'function') {
+  window.chartEgresosLineal.destroy();
+}
+window.chartEgresosLineal = new Chart(ctxLinealEgresos, {
+  type: 'line',
+  data: {
+    labels: datosLinealEgresos.labels,
+    datasets: [{
+      label: 'Egresos Totales',
+      data: datosLinealEgresos.datos,
+      borderColor: '#E74C3C',
+      backgroundColor: 'rgba(231,76,60,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+
+  // Función para cambiar de pestaña en Finanzas
+  function openTabFinanzas(tabName){
+    document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
+    document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
+    document.getElementById('contentFinanzasIngresos').classList.remove('activeTabContent');
+    document.getElementById('tabFinanzasTotal').classList.remove('activeTab');
+    document.getElementById('tabFinanzasEgresos').classList.remove('activeTab');
+    document.getElementById('tabFinanzasIngresos').classList.remove('activeTab');
+    if(tabName === 'Total'){
+      document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasTotal').classList.add('activeTab');
+    } else if(tabName === 'Egresos'){
+      document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
+    } else if(tabName === 'Ingresos'){
+      document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
+    }
+  }
+
+  /**************************************************************
+   * FICHA INFORMATIVA (Ya existente)
+   **************************************************************/
+  let currentFichaChild = null;
+  function openFicha(childObj) {
+    currentFichaChild = childObj;
+    document.getElementById('matriculasContainer').classList.remove('activeContainer');
+    screenStack.push("ficha");
+    document.getElementById('fichaInformativaPanel').style.display = 'block';
+    renderFicha(childObj);
+  }
+  function renderFicha(ch) {
+    const cont = document.getElementById('fichaContent');
+    cont.innerHTML = '';
+    if (!ch.ficha) ch.ficha = {};
+    if (!ch.hasOwnProperty('fichaCompleta')) ch.fichaCompleta = false;
+    if (ch.fichaCompleta) {
+      const h3 = document.createElement('h3');
+      h3.textContent = "Ficha Informativa (Completada)";
+      cont.appendChild(h3);
+      cont.innerHTML += createFichaResumenHTML(ch.ficha);
+      const btnEd = document.createElement('button');
+      btnEd.className = 'finish-btn';
+      btnEd.textContent = 'Editar';
+      btnEd.onclick = () => {
+        ch.fichaCompleta = false;
+        renderFicha(ch);
+      };
+      cont.appendChild(btnEd);
+      const btnBack = document.createElement('button');
+      btnBack.className = 'finish-btn';
+      btnBack.style.marginLeft = '10px';
+      btnBack.textContent = 'Regresar';
+      btnBack.onclick = goBackFicha;
+      cont.appendChild(btnBack);
+    } else {
+      createFichaForm(ch, cont);
+    }
+  }
+  function createFichaResumenHTML(f) {
+    let html = "<ul>";
+    for (const key in f) {
+      if (f.hasOwnProperty(key)) {
+        html += `<li><strong>${key}:</strong> ${f[key]}</li>`;
+      }
+    }
+    html += "</ul>";
+    return html;
+  }
+  function createFichaForm(ch, container) {
+    const sec1 = document.createElement('div');
+    sec1.className = 'subsection';
+    let h4_1 = document.createElement('h4');
+    h4_1.textContent = "Sección 1: Datos del Niño";
+    sec1.appendChild(h4_1);
+    sec1.appendChild(makeField("DNI", "dni", "number", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Nombres y Apellidos", "nomApeNino", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Fecha de Nacimiento (día/mes/año)", "fechaNacNino", "date", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Lugar de Nacimiento", "lugarNacNino", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Edad (en años)", "edadNino", "number", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Sexo", "sexoNino", "select", ch.ficha, { required: true, options: ["Masculino", "Femenino", "Otro"] }));
+    sec1.appendChild(makeField("Religión", "religionNino", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Tipo de Parto (Normal / Cesárea)", "tipoParto", "select", ch.ficha, { required: true, options: ["Normal", "Cesárea"] }));
+    sec1.appendChild(makeField("Dirección", "direccionNino", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Nro. de Hermanos", "nroHermanos", "number", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Teléfono (principal)", "telPrincipal", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Teléfono(s) de Emergencia", "telEmergencia", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Centro Médico en caso de urgencia", "centroMedico", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Número de Seguro", "numSeguro", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("Tipo de Seguro", "tipoSeguro", "text", ch.ficha, { required: true }));
+    sec1.appendChild(makeField("¿Con quién o quiénes vive el menor?", "conQuienVive", "select", ch.ficha, {
+      required: true,
+      options: ["Solo el Padre", "Solo la Madre", "Ambos Padres", "Apoderado"]
+    }));
+    container.appendChild(sec1);
+    const sec2 = document.createElement('div');
+    sec2.className = 'subsection';
+    let hh2 = document.createElement('h4');
+    hh2.textContent = "Sección 2: Datos del Padre";
+    sec2.appendChild(hh2);
+    sec2.appendChild(makeField("Apellidos y Nombres", "apellidosPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("DNI", "dniPadre", "number", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Fecha de Nacimiento", "fechaNacPadre", "date", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Religión", "religionPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Estado Civil", "estadoCivilPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Grado de Instrucción", "gradoInstrPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Ocupación", "ocupPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Teléfono", "telPadre", "text", ch.ficha, { required: true }));
+    sec2.appendChild(makeField("Correo Electrónico", "emailPadre", "text", ch.ficha, { required: true }));
+    container.appendChild(sec2);
+    const sec3 = document.createElement('div');
+    sec3.className = 'subsection';
+    let hh3 = document.createElement('h4');
+    hh3.textContent = "Sección 3: Datos de la Madre";
+    sec3.appendChild(hh3);
+    sec3.appendChild(makeField("Apellidos y Nombres", "apellidosMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("DNI", "dniMadre", "number", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Fecha de Nacimiento", "fechaNacMadre", "date", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Religión", "religionMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Estado Civil", "estadoCivilMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Grado de Instrucción", "gradoInstrMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Ocupación", "ocupMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Teléfono", "telMadre", "text", ch.ficha, { required: true }));
+    sec3.appendChild(makeField("Correo Electrónico", "emailMadre", "text", ch.ficha, { required: true }));
+    container.appendChild(sec3);
+    const sec4 = document.createElement('div');
+    sec4.className = 'subsection';
+    let hh4 = document.createElement('h4');
+    hh4.textContent = "Sección 4: Datos del Apoderado";
+    sec4.appendChild(hh4);
+    sec4.appendChild(makeField("Apellidos y Nombres", "apellidosApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("DNI", "dniApod", "number", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Fecha de Nacimiento", "fechaNacApod", "date", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Religión", "religionApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Estado Civil", "estadoCivilApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Grado de Instrucción", "gradoInstrApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Ocupación", "ocupApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Teléfono", "telApod", "text", ch.ficha, { required: true }));
+    sec4.appendChild(makeField("Correo Electrónico", "emailApod", "text", ch.ficha, { required: true }));
+    container.appendChild(sec4);
+    const sec5 = document.createElement('div');
+    sec5.className = 'subsection';
+    let hh5 = document.createElement('h4');
+    hh5.textContent = "Sección 5: Desarrollo";
+    sec5.appendChild(hh5);
+    sec5.appendChild(makeField("Complicaciones Durante el Parto (Sí / No), especificar", "complicParto", "text", ch.ficha, { required: true }));
+    sec5.appendChild(makeField("Desarrollo Motriz", "desarrolloMotriz", "text", ch.ficha, { required: true }));
+    sec5.appendChild(makeField("¿Ya levanta la cabeza?", "levantaCabeza", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Se sienta?", "seSienta", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Gatea?", "gatea", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Se para?", "sePara", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Camina?", "camina", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Controla esfínteres?", "controlaEsfinteres", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Ya dijo sus primeras palabras?", "primerasPalabras", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec5.appendChild(makeField("¿Ya habla con fluidez?", "hablaFluidez", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    container.appendChild(sec5);
+    const sec6 = document.createElement('div');
+    sec6.className = 'subsection';
+    let hh6 = document.createElement('h4');
+    hh6.textContent = "Sección 6: Salud";
+    sec6.appendChild(hh6);
+    sec6.appendChild(makeField("¿Sufre de alguna enfermedad(es) (Sí/No)?", "enfermedades", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec6.appendChild(makeField("Alergias (Sí/No)", "alergias", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec6.appendChild(makeField("Control de Vacunas: Varicela", "vacunaVaricela", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec6.appendChild(makeField("Control de Vacunas: Sarampión", "vacunaSarampion", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec6.appendChild(makeField("Control de Vacunas: COVID", "vacunaCOVID", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
+    sec6.appendChild(makeField("Tipo de Sangre", "tipoSangre", "text", ch.ficha, { required: true }));
+    container.appendChild(sec6);
+    let vive = ch.ficha.conQuienVive || '';
+    if (vive === "Solo el Padre") {
+      sec3.style.display = 'none';
+      sec4.style.display = 'none';
+    } else if (vive === "Solo la Madre") {
+      sec2.style.display = 'none';
+      sec4.style.display = 'none';
+    } else if (vive === "Ambos Padres") {
+      sec4.style.display = 'none';
+    } else if (vive === "Apoderado") {
+      sec2.style.display = 'none';
+      sec3.style.display = 'none';
+    }
+    const btnFinish = document.createElement('button');
+    btnFinish.className = 'finish-btn';
+    btnFinish.textContent = 'Guardar';
+    btnFinish.onclick = () => {
+      let missing = checkFichaCompleta(ch);
+      if (missing.length > 0) {
+        alert("Faltan campos:\n- " + missing.join("\n- "));
+        return;
+      }
+      ch.fichaCompleta = true;
+      saveToFirebaseServices();
+      renderFicha(ch);
+    };
+    container.appendChild(btnFinish);
+  }
+  function makeField(labelText, key, fieldType, fichaObj, opts) {
+    const div = document.createElement('div');
+    div.className = 'form-field';
+    const lab = document.createElement('label');
+    lab.textContent = labelText;
+    div.appendChild(lab);
+    let input;
+    if (fieldType === "select") {
+      input = document.createElement('select');
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = '-- Selecciona --';
+      input.appendChild(emptyOption);
+      (opts.options || []).forEach(o => {
+        let op = document.createElement('option');
+        op.value = o;
+        op.textContent = o;
+        input.appendChild(op);
+      });
+      input.value = fichaObj[key] || '';
+      input.onchange = () => fichaObj[key] = input.value;
+    } else if (fieldType === "date") {
+      input = document.createElement('input');
+      input.type = 'date';
+      input.value = fichaObj[key] || '';
+      input.onchange = () => fichaObj[key] = input.value;
+    } else if (fieldType === "number") {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = fichaObj[key] || '';
+      input.oninput = (e) => {
+        e.target.value = e.target.value.replace(/[^\d]/g, '');
+        fichaObj[key] = e.target.value;
+      };
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = fichaObj[key] || '';
+      input.onchange = () => fichaObj[key] = input.value;
+    }
+    div.appendChild(input);
+    if (opts?.required) input.dataset.required = "true";
+    input.dataset.key = key;
+    return div;
+  }
+  function checkFichaCompleta(ch) {
+    let missing = [];
+    let f = ch.ficha;
+    let sec1 = ["dni", "nomApeNino", "fechaNacNino", "lugarNacNino", "edadNino", "sexoNino", "religionNino", "tipoParto", "direccionNino", "nroHermanos", "telPrincipal", "telEmergencia", "centroMedico", "numSeguro", "tipoSeguro"];
+    let sec5 = ["complicParto", "desarrolloMotriz", "levantaCabeza", "seSienta", "gatea", "sePara", "camina", "controlaEsfinteres", "primerasPalabras", "hablaFluidez"];
+    let sec6 = ["enfermedades", "alergias", "vacunaVaricela", "vacunaSarampion", "vacunaCOVID", "tipoSangre"];
+    let needed = [...sec1, ...sec5, ...sec6];
+    if (f.conQuienVive === "Apoderado") {
+      let sec4 = ["apellidosApod", "dniApod", "fechaNacApod", "religionApod", "estadoCivilApod", "gradoInstrApod", "ocupApod", "telApod", "emailApod"];
+      needed.push(...sec4);
+    }
+    needed.forEach(k => {
+      if (!f[k] || f[k].toString().trim() === '') {
+        missing.push(k);
+      }
+    });
+    return missing;
+  }
+
+  /**************************************************************
+   * FUNCIONES ADMIN MATRÍCULAS
+   **************************************************************/
+  async function initMatriculas(){
+    await loadFromFirebaseServices();
+    ensureMatriculaService();
+    monthlyPensionCheck();
+    renderMatriculasList();
+  }
+  function monthlyPensionCheck(){
+    const matServ = services.find(s => s.title === 'Matrícula');
+    if(!matServ) return;
+    const currentYM = getYearMonth();
+    matServ.children.forEach(ch => {
+      if(ch.lastPagoCheck && ch.lastPagoCheck !== currentYM){
+        if(!ch.pagoPension){
+          ch.pensionesAtrasadas = (ch.pensionesAtrasadas || 0) + 1;
+        }
+        ch.pagoPension = false;
+        ch.lastPagoCheck = currentYM;
+      }
+    });
+    saveToFirebaseServices();
+  }
+  function eliminarSubtipo() {
+  const sel = document.getElementById('egresoSubtipo');
+  const subtipoSeleccionado = sel.value;
+  if(!subtipoSeleccionado) {
+    alert("Selecciona un subtipo para eliminar");
+    return;
+  }
+  if(confirm(`¿Seguro que deseas eliminar el subtipo "${subtipoSeleccionado}"?`)) {
+    // Elimina el subtipo del array
+    subtiposEgresos = subtiposEgresos.filter(st => st !== subtipoSeleccionado);
+    cargarSubtiposEgresos();
+    saveFinanzasData(); // Guarda la lista actualizada en Firebase
+  }
+}
+
+  function renderMatriculasList(){
+    const matServ = services.find(s => s.title === 'Matrícula');
+    if(!matServ) return;
+    const tbody = document.getElementById('tbodyMatriculas');
+    tbody.innerHTML = '';
+    matServ.children.forEach(ch => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
+      row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
+      const cellF = row.insertCell(2);
+      const btnF = document.createElement('button');
+      btnF.className = 'ficha-btn';
+      btnF.style.fontWeight = '600';
+      btnF.style.borderRadius = '8px';
+      btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
+      btnF.style.color = '#fff';
+      btnF.textContent = 'Ficha Informativa';
+      btnF.onclick = () => openFicha(ch);
+      cellF.appendChild(btnF);
+      const cellP = row.insertCell(3);
+      const btnP = document.createElement('button');
+      btnP.className = 'pension-btn';
+      btnP.style.fontWeight = '600';
+      btnP.style.borderRadius = '8px';
+      btnP.style.color = '#fff';
+      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+      btnP.onclick = () => {
+        ch.pagoPension = !ch.pagoPension;
+        btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+        btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+        saveToFirebaseServices();
+      };
+      cellP.appendChild(btnP);
+      const cellA = row.insertCell(4);
+      const inputA = document.createElement('input');
+      inputA.type = 'number';
+      inputA.style.width = '60px';
+      inputA.value = ch.pensionesAtrasadas || 0;
+      inputA.onchange = () => {
+        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+        saveToFirebaseServices();
+      };
+      cellA.appendChild(inputA);
+    });
+  }
+  function filtrarMatriculas(){
+    const valAno = document.getElementById('filtroAno').value;
+    const valPension = document.getElementById('filtroPension').value;
+    const matServ = services.find(s => s.title === 'Matrícula');
+    if(!matServ) return;
+    let arr = [...matServ.children];
+    if(valAno){
+      arr = arr.filter(ch => getVariantName(ch.variantId) === valAno);
+    }
+    if(valPension === 'SI'){
+      arr = arr.filter(ch => (!ch.pagoPension || ch.pensionesAtrasadas > 0));
+    } else if(valPension === 'NO'){
+      arr = arr.filter(ch => (ch.pagoPension && ch.pensionesAtrasadas === 0));
+    }
+    const tbody = document.getElementById('tbodyMatriculas');
+    tbody.innerHTML = '';
+    arr.forEach(ch => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
+      row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
+      const cellF = row.insertCell(2);
+      const btnF = document.createElement('button');
+      btnF.className = 'ficha-btn';
+      btnF.style.fontWeight = '600';
+      btnF.style.borderRadius = '8px';
+      btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
+      btnF.style.color = '#fff';
+      btnF.textContent = 'Ficha Informativa';
+      btnF.onclick = () => openFicha(ch);
+      cellF.appendChild(btnF);
+      const cellP = row.insertCell(3);
+      const btnP = document.createElement('button');
+      btnP.className = 'pension-btn';
+      btnP.style.fontWeight = '600';
+      btnP.style.borderRadius = '8px';
+      btnP.style.color = '#fff';
+      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+      btnP.onclick = () => {
+        ch.pagoPension = !ch.pagoPension;
+        btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+        btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+        saveToFirebaseServices();
+      };
+      cellP.appendChild(btnP);
+      const cellA = row.insertCell(4);
+      const inputA = document.createElement('input');
+      inputA.type = 'number';
+      inputA.style.width = '60px';
+      inputA.value = ch.pensionesAtrasadas || 0;
+      inputA.onchange = () => {
+        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+        saveToFirebaseServices();
+      };
+      cellA.appendChild(inputA);
+    });
+  }
+async function loadUsersFromFirebase(){
+  // Leemos todos los docs de la colección "users"
+  const ref = collection(db, "users");
+  const snap = await getDocs(ref);
+  users = snap.docs.map(doc => ({
+    username: doc.id,
+    ...doc.data()
+  }));
+}
+async function goToUsers(){
+  // Solo el usuario "renatozepi" (superadmin) puede entrar, 
+  // o podrías hacer un permiso p.adminUsers
+  if(!currentUser || currentUser.username !== "renatozepi"){
+    alert("Solo el usuario administrador principal puede gestionar usuarios.");
+    return;
+  }
+  // Ocultamos login y landing
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('usersContainer').style.display = 'block';
+  screenStack.push("users");
+  await loadUsersFromFirebase();
+  showUsersList();
+  openTabUsers('UsersMain');
+}
+
+async function saveUserToFirebase(userObj){
+  // userObj.username es la key
+  const docRef = doc(db, "users", userObj.username);
+  await setDoc(docRef, userObj, { merge: true });
+}
+function showUsersList(){
+  const container = document.getElementById('usersList');
+  container.innerHTML = '';
+  users.forEach(u => {
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.justifyContent = 'space-between';
+    div.style.border = '1px solid #ccc';
+    div.style.borderRadius = '6px';
+    div.style.padding = '6px';
+    div.style.marginBottom = '5px';
+
+    const leftSpan = document.createElement('span');
+    leftSpan.textContent = `Usuario: ${u.username}`;
+    div.appendChild(leftSpan);
+
+    const rightDiv = document.createElement('div');
+    // Botón Editar Permisos
+    const btnEd = document.createElement('button');
+    btnEd.textContent = 'Editar Permisos';
+    btnEd.onclick = () => editUser(u.username);
+    rightDiv.appendChild(btnEd);
+
+    // Botón Eliminar (no se muestra para el usuario principal, por ejemplo "renatozepi")
+    if(u.username !== "renatozepi") {
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => deleteUser(u.username);
+      rightDiv.appendChild(btnDel);
+    }
+    div.appendChild(rightDiv);
+
+    container.appendChild(div);
+  });
+}
+async function deleteUser(username) {
+  if(!confirm(`¿Estás seguro de eliminar el usuario "${username}"?`)) return;
+  try {
+    await deleteDoc(doc(db, "users", username));
+    alert("Usuario eliminado");
+    // Recargar la lista
+    await loadUsersFromFirebase();
+    showUsersList();
+  } catch (error) {
+    console.error("Error eliminando usuario:", error);
+    alert("Error al eliminar usuario");
+  }
+}
+async function crearUser(){
+  const userName = document.getElementById('newUserName').value.trim();
+  const userPass = document.getElementById('newUserPass').value;
+  if(!userName || !userPass){
+    alert("Completa el nombre de usuario y la contraseña.");
+    return;
+  }
+
+  // Permisos por defecto, todos false
+  const defaultPerms = {
+    macros:false, macrosNinos:false,
+    services:false, servicesVariants:false, servicesChildren:false,
+    matriculas:false,
+    finanzas:false, finanzasTotal:false, finanzasEgresos:false, finanzasIngresos:false
+  };
+
+  const newUser = {
+    username: userName,
+    password: userPass,
+    permisos: defaultPerms
+  };
+
+  await saveUserToFirebase(newUser);
+  alert("Usuario creado!");
+  document.getElementById('newUserName').value = '';
+  document.getElementById('newUserPass').value = '';
+  await loadUsersFromFirebase();
+  showUsersList();
+}
+function editUser(username){
+  editingUsername = username;
+  openTabUsers('EditUser');
+  const u = users.find(x => x.username === username);
+  if(!u) return;
+  document.getElementById('currentUserTitle').textContent = u.username;
+
+  const p = u.permisos || {};
+  document.getElementById('permMacros').checked           = !!p.macros;
+  document.getElementById('permMacrosNinos').checked      = !!p.macrosNinos;
+  document.getElementById('permServices').checked         = !!p.services;
+  document.getElementById('permServicesVariants').checked = !!p.servicesVariants;
+  document.getElementById('permServicesChildren').checked = !!p.servicesChildren;
+  document.getElementById('permMatriculas').checked       = !!p.matriculas;
+  document.getElementById('permFinanzas').checked         = !!p.finanzas;
+  document.getElementById('permFinanzasTotal').checked    = !!p.finanzasTotal;
+  document.getElementById('permFinanzasEgresos').checked  = !!p.finanzasEgresos;
+  document.getElementById('permFinanzasIngresos').checked = !!p.finanzasIngresos;
+}
+
+async function guardarPermisosUsuario(){
+  if(!editingUsername) return;
+  const idx = users.findIndex(x => x.username === editingUsername);
+  if(idx < 0) return;
+  const u = users[idx];
+
+  u.permisos.macros            = document.getElementById('permMacros').checked;
+  u.permisos.macrosNinos       = document.getElementById('permMacrosNinos').checked;
+  u.permisos.services          = document.getElementById('permServices').checked;
+  u.permisos.servicesVariants  = document.getElementById('permServicesVariants').checked;
+  u.permisos.servicesChildren  = document.getElementById('permServicesChildren').checked;
+  u.permisos.matriculas        = document.getElementById('permMatriculas').checked;
+  u.permisos.finanzas          = document.getElementById('permFinanzas').checked;
+  u.permisos.finanzasTotal     = document.getElementById('permFinanzasTotal').checked;
+  u.permisos.finanzasEgresos   = document.getElementById('permFinanzasEgresos').checked;
+  u.permisos.finanzasIngresos  = document.getElementById('permFinanzasIngresos').checked;
+
+  await saveUserToFirebase(u);
+  alert("Permisos actualizados!");
+  openTabUsers('UsersMain');
+  showUsersList();
+}
+function openTabUsers(tabName){
+  document.getElementById('contentUsersMain').classList.remove('activeTabContent');
+  document.getElementById('contentEditUser').classList.remove('activeTabContent');
+  document.getElementById('tabUsersMain').classList.remove('activeTab');
+  document.getElementById('tabEditUser').classList.remove('activeTab');
+
+  if(tabName === 'UsersMain'){
+    document.getElementById('contentUsersMain').classList.add('activeTabContent');
+    document.getElementById('tabUsersMain').classList.add('activeTab');
+  } else {
+    document.getElementById('contentEditUser').classList.add('activeTabContent');
+    document.getElementById('tabEditUser').style.display = 'block';
+    document.getElementById('tabEditUser').classList.add('activeTab');
+  }
+}
+
+
+  /**************************************************************
+   * EXPOSE FUNCTIONS TO GLOBAL (after DOMContentLoaded)
+   **************************************************************/
+   document.addEventListener('DOMContentLoaded', () => {
+    window.goToMacros = goToMacros;
+    window.goToServices = goToServices;
+    window.goToMatriculas = goToMatriculas;
+    window.goToFinanzas = goToFinanzas;
+    window.goBack = goBack;
+    window.goBackFicha = goBackFicha;
+    window.openTabMacros = openTabMacros;
+    window.crearMacro = crearMacro;
+    window.agregarOguardarNino = agregarOguardarNino;
+    window.agregarEgreso = agregarEgreso;
+    window.generarTxt = generarTxt;
+    window.guardarYVolver = guardarYVolver;
+    window.openTabServices = openTabServices;
+    window.openTabFinanzas = openTabFinanzas;
+    window.crearService = crearService;
+    window.agregarOguardarVariante = agregarOguardarVariante;
+    window.doneVariants = doneVariants;
+    window.agregarOguardarChild = agregarOguardarChild;
+    window.doneChildren = doneChildren;
+    window.filtrarMatriculas = filtrarMatriculas;
+    window.initMatriculas = initMatriculas;
+    window.renderMatriculasList = renderMatriculasList;
+    window.agregarNuevoSubtipo = agregarNuevoSubtipo;
+    window.cambiarMesFinanzas = cambiarMesFinanzas;
+    window.eliminarSubtipo = eliminarSubtipo;
+    window.currentUser = currentUser;
+    window.goToUsers = goToUsers;
+    window.crearUser = crearUser;
+    window.guardarPermisosUsuario = guardarPermisosUsuario
+    window.logout = logout
+  });
+</script>
 </body>
 </html>
