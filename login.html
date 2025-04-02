@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #f0f0f0;
+    }
+
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-container h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .login-container input {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .login-container button {
+      width: 100%;
+      padding: 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .login-container button:hover {
+      background: #0056b3;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Iniciar sesión</h2>
+    <input type="text" id="usuario" placeholder="Usuario" />
+    <input type="password" id="password" placeholder="Contraseña" />
+    <button onclick="login()">Ingresar</button>
+    <div class="error" id="errorMensaje"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Importa Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    // Configuración Firebase (la tuya exacta, basada en la imagen que me diste)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBX-TSDlUqJQORURvQLWMCZ1ldmK3EBb4Y",
+      authDomain: "definitivo-4841f.firebaseapp.com",
+      projectId: "definitivo-4841f",
+      storageBucket: "definitivo-4841f.appspot.com",
+      messagingSenderId: "1037353039298",
+      appId: "1:1037353039298:web:9a6c948f519579effdbf68"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function login() {
+      const userInput = document.getElementById("usuario").value.trim();
+      const passInput = document.getElementById("password").value.trim();
+      const errorDiv = document.getElementById("errorMensaje");
+
+      errorDiv.textContent = "";
+
+      const querySnapshot = await getDocs(collection(db, "usuariosData"));
+      let encontrado = false;
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.usuario === userInput) {
+          encontrado = true;
+          if (data.contraseña === passInput) {
+            // Guardar permisos en localStorage
+            localStorage.setItem("permisos", JSON.stringify(data.permisos));
+            // Redirigir a dashboard
+            window.location.href = "dashboard.html";
+          } else {
+            errorDiv.textContent = "Contraseña incorrecta.";
+          }
+        }
+      });
+
+      if (!encontrado) {
+        errorDiv.textContent = "Usuario no encontrado.";
+      }
+    }
+  </script>
+</body>
+</html>
