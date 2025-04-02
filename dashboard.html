@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
 
+  <!-- Chart.js (para gráficos en el menú de Finanzas) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     /* =================== ESTILOS GENERALES =================== */
     * { box-sizing: border-box; }
@@ -19,6 +22,16 @@
     }
     .hidden { display: none !important; }
     .active { display: block !important; }
+<!-- =================== LOGIN PAGE =================== -->
+<div id="loginPage" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+  <h2>Iniciar Sesión</h2>
+  <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 250px;">
+    <input type="text" id="loginUsername" placeholder="Usuario" />
+    <input type="password" id="loginPassword" placeholder="Contraseña" />
+    <button onclick="attemptLogin()">Ingresar</button>
+  </div>
+</div>
+
 
     /* =================== LANDING PAGE =================== */
     #landingPage {
@@ -36,6 +49,8 @@
     .landing-buttons {
       display: flex;
       gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
     }
     .landing-buttons button {
       background-color: #f1c40f;
@@ -102,6 +117,7 @@
     .tab.activeTab { background-color: #4a90e2; }
     .tab-content { display: none; padding: 20px; }
     .tab-content.activeTabContent { display: block; }
+
 
     /* =================== ESTILOS MACROS =================== */
     #macrosContainer .macros-list {
@@ -250,6 +266,7 @@
       outline: none;
     }
 
+
     /* =================== FICHA INFORMATIVA =================== */
     #fichaInformativaPanel {
       display: none;
@@ -303,10 +320,135 @@
     .edit-section-btn:hover {
       background-color: #1a2e55;
     }
+
+    /* =================== ESTILOS ADMIN FINANZAS =================== */
+    /* Contenedor para Finanzas */
+    #finanzasContainer {
+      display: none;
+      background-color: #fff;
+      width: 85%;
+      max-width: 1100px;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      position: relative;
+      padding-bottom: 60px;
+    }
+    /* Fin de pestañas: se reutiliza la clase .tabs, .tab y .tab-content */
+
+    /* Selector de mes (dropdown) en finanzas */
+    .finanzas-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 10px 20px;
+      background-color: #f9f9f9;
+    }
+    .finanzas-header label {
+      margin-right: 10px;
+      font-weight: 600;
+      color: #1a2e55;
+    }
+    .finanzas-header select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    /* Tarjetas (cajas) para Total Mensual */
+    .finanzas-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+    .finanzas-card {
+      background-color: #f1c40f;
+      color: #1a2e55;
+      border-radius: 6px;
+      padding: 15px;
+      flex: 1 1 calc(33.333% - 20px);
+      text-align: center;
+      min-width: 250px;
+    }
+    .finanzas-card h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .finanzas-card p {
+      margin: 5px 0 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    /* Indicador de porcentaje */
+    .finanzas-indicador {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 600;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* Formularios y tablas en Egresos e Ingresos */
+    .finanzas-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .finanzas-form input, .finanzas-form select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+    .finanzas-form button {
+      background-color: #f1c40f;
+      color: #1a2e55;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .finanzas-form button:hover {
+      background-color: #1a2e55;
+      color: #f1c40f;
+    }
+    .finanzas-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .finanzas-table th, .finanzas-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .finanzas-table thead {
+      background-color: #f1c40f;
+      color: #1a2e55;
+    }
+    /* Placeholder para gráficos */
+    .chart-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto 20px;
+    }
   </style>
 </head>
 <body>
-
+  <div id="logoutContainer" style="position:absolute; top:15px; right:15px; display:none;">
+    <button onclick="logout()" style="background-color:#f1c40f; border:none; border-radius:6px; padding:8px; font-weight:600; cursor:pointer;">
+      Cerrar Sesión
+    </button>
+  </div>
 <!-- =================== LANDING PAGE =================== -->
 <div id="landingPage">
   <h1>Bienvenid@, selecciona qué deseas administrar:</h1>
@@ -314,6 +456,8 @@
     <button onclick="goToMacros()">Administrador de Macros</button>
     <button onclick="goToServices()">Administrador de Servicios</button>
     <button onclick="goToMatriculas()">Administrador de Matrículas</button>
+    <button onclick="goToFinanzas()">Administrador de Finanzas</button>
+    <button onclick="goToUsers()">Administrador de Usuarios</button>
   </div>
 </div>
 
@@ -499,6 +643,198 @@
   </table>
 </div>
 
+<!-- =================== CONTENEDOR FINANZAS =================== -->
+<div class="app-container" id="finanzasContainer">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabFinanzasTotal" onclick="openTabFinanzas('Total')">Total Mensual</div>
+    <div class="tab" id="tabFinanzasEgresos" onclick="openTabFinanzas('Egresos')">Egresos</div>
+    <div class="tab" id="tabFinanzasIngresos" onclick="openTabFinanzas('Ingresos')">Ingresos</div>
+  </div>
+  <!-- Encabezado con selector de mes -->
+  <div class="finanzas-header">
+    <label for="finanzasMes">Mes:</label>
+    <select id="finanzasMes" onchange="cambiarMesFinanzas()">
+      <!-- Opciones generadas dinámicamente -->
+    </select>
+  </div>
+  <!-- Contenido de cada subpanel -->
+  <div class="tab-content activeTabContent" id="contentFinanzasTotal">
+    <h2>Administrador de Finanzas - Total Mensual</h2>
+    <!-- Sección superior con gráficos y total central (placeholders) -->
+  <div style="display: flex; justify-content: center; align-items: center; height: 10%;">
+      <div class="chart-container">
+        <canvas id="chartFinanzasCircular"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartFinanzasLinealTotal"></canvas>
+      </div>
+    </div>
+    <!-- Tarjetas de indicadores en 2 filas (máximo 3 por fila) -->
+    <div class="finanzas-cards">
+      <div class="finanzas-card">
+        <h3>Egresos Variables</h3>
+        <p id="egresosVariables">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Egresos Fijos</h3>
+        <p id="egresosFijos">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Egresos Totales</h3>
+        <p id="egresosTotales">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Brutos Esperados</h3>
+        <p id="ingresosBrutosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Netos Esperados</h3>
+        <p id="ingresosNetosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Brutos Totales</h3>
+        <p id="ingresosBrutosTotales">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Ingresos Netos Totales</h3>
+        <p id="ingresosNetosTotales">S/ 0.00</p>
+      </div>
+    </div>
+    <!-- Indicador de variación respecto al mes anterior -->
+    <div class="finanzas-indicador" id="indicadorVariacion">
+      <!-- Se mostrará algo como: +10% o -5% -->
+      Variación: +0%
+    </div>
+  </div>
+  <div class="tab-content" id="contentFinanzasEgresos">
+    <h2>Administrador de Finanzas - Egresos</h2>
+    <!-- Formulario para agregar egresos -->
+    <div class="finanzas-form">
+      <input type="text" id="egresoNombre" placeholder="Nombre del egreso" />
+      <select id="egresoTipo">
+        <option value="">-- Selecciona Tipo --</option>
+        <option value="Fijo">Fijo</option>
+        <option value="Variable">Variable</option>
+      </select>
+      <select id="egresoSubtipo">
+        <!-- Opciones de subtipos, se pueden editar -->
+        <option value="">-- Selecciona Subtipo --</option>
+      </select>
+      <button type="button" onclick="agregarNuevoSubtipo()">+</button>
+      <button type="button" onclick="eliminarSubtipo()">-</button>
+      <input type="number" id="egresoCantidad" placeholder="Cantidad" step="0.01" />
+      <input type="number" id="egresoDescuento" placeholder="Descuento" step="0.01" />
+      <button onclick="agregarEgreso()">Agregar</button>
+    </div>
+    <!-- Tabla de egresos -->
+    <table class="finanzas-table" id="tablaEgresos">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Subtipo</th>
+          <th>Cantidad</th>
+          <th>Descuento</th>
+          <th>Total</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Filas generadas dinámicamente -->
+      </tbody>
+    </table>
+    <!-- Gráficos para egresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartEgresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartEgresosCircular"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="tab-content" id="contentFinanzasIngresos">
+    <h2>Administrador de Finanzas - Ingresos</h2>
+    <!-- Se muestran dos secciones: Total Esperado y Total Neto -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="finanzas-card">
+        <h3>Total Esperado</h3>
+        <p id="ingresosEsperados">S/ 0.00</p>
+      </div>
+      <div class="finanzas-card">
+        <h3>Total Neto</h3>
+        <p id="ingresosNetos">S/ 0.00</p>
+      </div>
+    </div>
+    <!-- Tabla de ingresos (solo visualización) -->
+    <table class="finanzas-table" id="tablaIngresos">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Subtipo</th>
+          <th>Total</th>
+          <th>Pagó Mensualidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Filas generadas dinámicamente -->
+      </tbody>
+    </table>
+    <!-- Gráficos para ingresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartIngresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartIngresosCircular"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- =================== CONTENEDOR USERS =================== -->
+<div class="app-container" id="usersContainer" style="display:none;">
+  <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
+  <div class="tabs">
+    <div class="tab activeTab" id="tabUsersMain" onclick="openTabUsers('UsersMain')">Usuarios</div>
+    <!-- Ocultamos la pestaña de Editar Usuario por defecto -->
+    <div class="tab" id="tabEditUser" style="display:none;" onclick="openTabUsers('EditUser')">Editar Usuario</div>
+  </div>
+
+  <!-- Contenido pestaña principal: lista y creación de usuarios -->
+  <div class="tab-content activeTabContent" id="contentUsersMain">
+    <h2>Administrador de Usuarios</h2>
+    <div id="usersList" style="margin-top:10px;"></div>
+
+    <h3 style="margin-top:20px;">Crear nuevo usuario</h3>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input type="text" id="newUserName" placeholder="Usuario" />
+      <input type="password" id="newUserPass" placeholder="Contraseña" />
+      <button onclick="crearUser()">Crear</button>
+    </div>
+  </div>
+
+  <!-- Contenido pestaña para editar un usuario -->
+  <div class="tab-content" id="contentEditUser">
+    <h2 id="currentUserTitle"></h2>
+    <p>Define los permisos para el usuario</p>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label><input type="checkbox" id="permMacros"/> Macros</label>
+      <label><input type="checkbox" id="permMacrosNinos"/> Macros - Niños</label>
+      <label><input type="checkbox" id="permServices"/> Servicios</label>
+      <label><input type="checkbox" id="permServicesVariants"/> Servicios - Variantes</label>
+      <label><input type="checkbox" id="permServicesChildren"/> Servicios - Niños</label>
+      <label><input type="checkbox" id="permMatriculas"/> Matrículas</label>
+      <label><input type="checkbox" id="permFinanzas"/> Finanzas</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasTotal"/> - Total</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasEgresos"/> - Egresos</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="permFinanzasIngresos"/> - Ingresos</label>
+    </div>
+    <button style="margin-top:10px;" onclick="guardarPermisosUsuario()">Guardar Permisos</button>
+  </div>
+</div>
+
 <!-- =================== FICHA INFORMATIVA =================== -->
 <div id="fichaInformativaPanel">
   <button class="bottom-left-btn" onclick="goBackFicha()">Regresar</button>
@@ -512,7 +848,14 @@
    * Firebase Initialization and Firestore Setup
    *************************************************************/
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,    // <--- Agregar
+  getDocs       // <--- Agregar
+} from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
 
   // Tu configuración de Firebase
   const firebaseConfig = {
@@ -532,26 +875,84 @@
    * Global Variables and Screen Navigation
    *************************************************************/
   let screenStack = ["landing"];
+  let users = [];
+  let editingUsername = null;
+  let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
 
-  // Marcar como async para poder await cargar datos antes de proceder
-  async function goToMacros(){
-    document.getElementById('landingPage').classList.add('hidden');
-    document.getElementById('macrosContainer').classList.add('activeContainer');
-    screenStack.push("macros");
-    await initMacros();
+async function goToMacros(){
+  // Verificar permiso
+  if(!currentUser || !currentUser.permisos.macros){
+    alert("No tienes permiso para acceder a Macros.");
+    return;
   }
-  async function goToServices(){
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('macrosContainer').classList.add('activeContainer');
+  screenStack.push("macros");
+  await initMacros();
+}
+
+  async function loadFinanzasData() {
+  try {
+    const docRef = doc(db, "data", "finanzas");
+    const docSnap = await getDoc(docRef);
+    if(docSnap.exists()){
+      const data = docSnap.data();
+      finanzasData.egresos = data.egresos || [];
+      // Si tienes almacenados los subtipos también:
+      subtiposEgresos = data.subtipos || subtiposEgresos;
+    }
+  } catch (error) {
+    console.error("Error loading finanzas data:", error);
+  }
+}
+
+async function saveFinanzasData() {
+  try {
+    const docRef = doc(db, "data", "finanzas");
+    const data = {
+      egresos: finanzasData.egresos,
+      subtipos: subtiposEgresos
+    };
+    await setDoc(docRef, data, { merge: true });
+    console.log("Finanzas data saved to Firebase");
+  } catch (error) {
+    console.error("Error saving finanzas data:", error);
+  }
+}
+
+async function goToServices(){
+  if(!currentUser || !currentUser.permisos.services){
+    alert("No tienes permiso para acceder a Servicios.");
+    return;
+  }
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('servicesContainer').classList.add('activeContainer');
     screenStack.push("services");
     await initServices();
   }
-  async function goToMatriculas(){
+async function goToMatriculas(){
+  if(!currentUser || !currentUser.permisos.matriculas){
+    alert("No tienes permiso para acceder a Matrículas.");
+    return;
+  }
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('matriculasContainer').classList.add('activeContainer');
     screenStack.push("matriculas");
     await initMatriculas();
   }
+async function goToFinanzas(){
+  if(!currentUser || !currentUser.permisos.finanzas){
+    alert("No tienes permiso para acceder a Finanzas.");
+    return;
+  }
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('finanzasContainer').classList.add('activeContainer');
+  screenStack.push("finanzas");
+  // Cargar la información de servicios para que los ingresos se calculen correctamente
+  await loadFromFirebaseServices();
+  // Inicializar Finanzas (que a su vez llama a renderFinanzas y actualiza los gráficos)
+  await initFinanzas();
+}
   function goBack(){
     screenStack.pop();
     const current = screenStack[screenStack.length-1];
@@ -559,6 +960,7 @@
     document.getElementById('macrosContainer')?.classList.remove('activeContainer');
     document.getElementById('servicesContainer')?.classList.remove('activeContainer');
     document.getElementById('matriculasContainer')?.classList.remove('activeContainer');
+    document.getElementById('finanzasContainer')?.classList.remove('activeContainer');
     if(current==="landing"){
       document.getElementById('landingPage').classList.remove('hidden');
     } else if(current==="macros"){
@@ -568,6 +970,9 @@
     } else if(current==="matriculas"){
       document.getElementById('matriculasContainer').classList.add('activeContainer');
       renderMatriculasList();
+    } else if(current==="finanzas"){
+      document.getElementById('finanzasContainer').classList.add('activeContainer');
+      renderFinanzas();
     }
   }
   function goBackFicha(){
@@ -581,6 +986,137 @@
       goBack();
     }
   }
+function calcularIngresosBrutoEsperado(mesSeleccionado) {
+  let total = 0;
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado) {
+        total += child.total || 0;
+      }
+    });
+  });
+  return total;
+}
+function calcularIngresosNetoEsperado(mesSeleccionado) {
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const totalEgresos = calcularEgresosTotales(
+    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
+  );
+  return brutoEsperado - totalEgresos;
+}
+function calcularIngresosBrutosTotales(mesSeleccionado) {
+  let total = 0;
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
+        total += child.total || 0;
+      }
+    });
+  });
+  return total;
+}
+function calcularIngresosNetosTotales(mesSeleccionado) {
+  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
+  const totalEgresos = calcularEgresosTotales(
+    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
+  );
+  return brutoTotales - totalEgresos;
+}
+async function attemptLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if(!username || !password){
+    alert("Completa usuario y contraseña");
+    return;
+  }
+  try {
+    // Buscar doc en la colección "users"
+    const docRef = doc(db, "users", username);
+    const docSnap = await getDoc(docRef);
+    if(!docSnap.exists()){
+      alert("Usuario no encontrado en la base de datos.");
+      return;
+    }
+    const userData = docSnap.data();
+    if(userData.password !== password){
+      alert("Contraseña incorrecta.");
+      return;
+    }
+
+    // Si coincide, login exitoso
+    currentUser = {
+      username: userData.username,
+      permisos: userData.permisos || {}
+    };
+
+    // Oculta login, muestra landing
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('landingPage').classList.remove('hidden');
+
+    // Muestra botón de logout
+    document.getElementById('logoutContainer').style.display = 'block';
+
+    // Aplica permisos en la interfaz
+    applyPermissionsToMenus();
+
+  } catch (err) {
+    console.error("Error en login:", err);
+    alert("Error al iniciar sesión.");
+  }
+}
+
+function logout(){
+  currentUser = null;
+  // Ocultamos todos los contenedores
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('macrosContainer').classList.remove('activeContainer');
+  document.getElementById('servicesContainer').classList.remove('activeContainer');
+  document.getElementById('matriculasContainer').classList.remove('activeContainer');
+  document.getElementById('finanzasContainer').classList.remove('activeContainer');
+  document.getElementById('usersContainer').style.display = 'none';
+
+  // Ocultamos logout
+  document.getElementById('logoutContainer').style.display = 'none';
+
+  // Mostramos login
+  document.getElementById('loginPage').style.display = 'flex';
+
+  // Limpiar inputs
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+function applyPermissionsToMenus(){
+  if(!currentUser) return;
+  const p = currentUser.permisos || {};
+
+  // Botones del landing
+    const usersBtn = document.querySelector(".landing-buttons button[onclick='goToUsers()']");
+  if(usersBtn){
+    usersBtn.style.display = (currentUser.username === "renatozepi") ? 'inline-block' : 'none';
+  }
+  const btnMacros = document.querySelector(".landing-buttons button[onclick='goToMacros()']");
+  const btnServices = document.querySelector(".landing-buttons button[onclick='goToServices()']");
+  const btnMatriculas = document.querySelector(".landing-buttons button[onclick='goToMatriculas()']");
+  const btnFinanzas = document.querySelector(".landing-buttons button[onclick='goToFinanzas()']");
+  if(btnMacros)   btnMacros.style.display    = p.macros ? 'inline-block' : 'none';
+  if(btnServices) btnServices.style.display  = p.services ? 'inline-block' : 'none';
+  if(btnMatriculas) btnMatriculas.style.display = p.matriculas ? 'inline-block' : 'none';
+  if(btnFinanzas) btnFinanzas.style.display = p.finanzas ? 'inline-block' : 'none';
+
+  // Pestañas Macros
+  if(!p.macrosNinos){
+    document.getElementById('tabNinos').style.display = 'none';
+  } else {
+    document.getElementById('tabNinos').style.display = 'block';
+  }
+
+  // Pestañas Finanzas
+  document.getElementById('tabFinanzasTotal').style.display    = p.finanzasTotal ? 'block' : 'none';
+  document.getElementById('tabFinanzasEgresos').style.display  = p.finanzasEgresos ? 'block' : 'none';
+  document.getElementById('tabFinanzasIngresos').style.display = p.finanzasIngresos ? 'block' : 'none';
+}
+
 
   /****************************************************
    * MACROS CODE (Con Firebase en lugar de localStorage)
@@ -864,7 +1400,6 @@
   let MATRICULA_ID = null;
   let editingServiceId = null;
   let editingServiceChildId = null;
-  // editingVariantId ya se declaró en macros
   async function loadFromFirebaseServices(){
     try {
       const docRef = doc(db, "data", "servicesData");
@@ -1225,31 +1760,51 @@
       alert('Completa todos los campos');
       return;
     }
-    if(editingServiceChildId === null){
-      const nuevo = {
-        id: nextServiceChildId++,
-        name,
-        lastname,
-        date: dateIn,
-        variantId,
-        ficha: {},
-        fichaCompleta: false,
-        pagoPension: false,
-        pensionesAtrasadas: 0,
-        lastPagoCheck: getYearMonth()
-      };
-      serv.children.push(nuevo);
-    } else {
-      const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
-      if(idx >= 0){
-        serv.children[idx].name = name;
-        serv.children[idx].lastname = lastname;
-        serv.children[idx].date = dateIn;
-        serv.children[idx].variantId = variantId;
-      }
-      editingServiceChildId = null;
-      document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+if(editingServiceChildId === null){
+  let precio = 0;
+  // Buscar la variante seleccionada según variantId obtenido del select
+  if(serv.variants && serv.variants.length > 0) {
+    let variant = serv.variants.find(v => v.id === variantId);
+    if(variant) {
+      precio = variant.price; // Asigna el precio de la variante
     }
+  }
+  const nuevo = {
+    id: nextServiceChildId++,
+    name,
+    lastname,
+    date: dateIn,
+    variantId,
+    mesRegistro: getYearMonth(), // Guarda el mes en que se registró
+    total: precio,              // Aquí se asigna el precio obtenido
+    ficha: {},
+    fichaCompleta: false,
+    pagoPension: false,         // Usaremos esta variable unificada para "Pagó Pensión/Mensualidad"
+    pensionesAtrasadas: 0,
+    lastPagoCheck: getYearMonth()
+  };
+  serv.children.push(nuevo);
+} else {
+  // En el caso de editar, actualizamos también el total:
+  const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
+  if(idx >= 0){
+    serv.children[idx].name = name;
+    serv.children[idx].lastname = lastname;
+    serv.children[idx].date = dateIn;
+    serv.children[idx].variantId = variantId;
+    let precio = 0;
+    if(serv.variants && serv.variants.length > 0) {
+      let variant = serv.variants.find(v => v.id === variantId);
+      if(variant) {
+        precio = variant.price;
+      }
+    }
+    serv.children[idx].total = precio;
+  }
+  editingServiceChildId = null;
+  document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+}
+
     clearChildForm();
     renderChildrenTable(serv.children);
     saveToFirebaseServices();
@@ -1293,7 +1848,421 @@
   }
 
   /**************************************************************
-   * FICHA INFORMATIVA
+   * FINANZAS (NUEVO MENÚ)
+   **************************************************************/
+  // Variables para finanzas
+  let finanzasData = {
+    egresos: [], // Array de objetos de egresos
+    ingresos: [] // Se obtendrán de los registros de servicios (niños)
+  };
+  // Se espera que cada registro de egreso tenga: id, nombre, tipo, subtipo, cantidad, descuento, mes, año
+  let nextEgresoId = 1;
+  // Para simplificar, los ingresos se calcularán a partir de los datos ya almacenados en servicios
+
+  // Inicialización de opciones del selector de mes (por ejemplo, últimos 12 meses)
+  function initSelectorMesFinanzas(){
+    const select = document.getElementById('finanzasMes');
+    select.innerHTML = '';
+    const d = new Date();
+    // Por defecto mostrar el mes actual y los 11 anteriores
+    for(let i = 0; i < 12; i++){
+      let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      let mes = fecha.getMonth() + 1;
+      let anio = fecha.getFullYear();
+      let option = document.createElement('option');
+      option.value = `${anio}-${mes.toString().padStart(2,'0')}`;
+      option.textContent = `${meses[fecha.getMonth()]} ${anio}`;
+      select.appendChild(option);
+    }
+  }
+  // Función para cambiar de mes en Finanzas
+  function cambiarMesFinanzas(){
+    renderFinanzas();
+  }
+  function cargarSubtiposEgresos() {
+  const sel = document.getElementById('egresoSubtipo');
+  sel.innerHTML = '<option value="">-- Selecciona Subtipo --</option>';
+  subtiposEgresos.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st;
+    opt.textContent = st;
+    sel.appendChild(opt);
+  });
+  }
+function agregarNuevoSubtipo() {
+  const nuevo = prompt("Ingresa el nuevo subtipo de egreso:");
+  if(nuevo && nuevo.trim() !== "") {
+    subtiposEgresos.push(nuevo.trim());
+    cargarSubtiposEgresos();
+    document.getElementById('egresoSubtipo').value = nuevo.trim();
+    saveFinanzasData(); // Guarda la lista actualizada de subtipos en Firebase
+  }
+}
+
+  // Función para inicializar Finanzas
+  async function initFinanzas(){
+  initSelectorMesFinanzas();
+  await loadFinanzasData();  // Cargar datos guardados en Firebase
+  cargarSubtiposEgresos();   // Para que el select de subtipos se actualice
+  renderFinanzas();
+  actualizarGraficosFinanzas();
+  }
+
+  // Renderiza la vista de Finanzas según el mes seleccionado
+function renderFinanzas(){
+  const mesSeleccionado = document.getElementById('finanzasMes').value;
+  // Filtrar egresos para el mes seleccionado
+  const egresosFiltrados = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado);
+
+  // Cálculos para egresos
+  const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
+  const totalEgresosFijos = calcularEgresosTipo(egresosFiltrados, "Fijo");
+  const totalEgresos = calcularEgresosTotales(egresosFiltrados);
+
+  // Cálculos para ingresos
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const netoEsperado = calcularIngresosNetoEsperado(mesSeleccionado);
+  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
+  const netoTotales = calcularIngresosNetosTotales(mesSeleccionado);
+
+  // Actualiza las tarjetas
+  document.getElementById('egresosVariables').textContent = "S/ " + totalEgresosVariables.toFixed(2);
+  document.getElementById('egresosFijos').textContent = "S/ " + totalEgresosFijos.toFixed(2);
+  document.getElementById('egresosTotales').textContent = "S/ " + totalEgresos.toFixed(2);
+  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetosEsperados').textContent = "S/ " + netoEsperado.toFixed(2);
+  document.getElementById('ingresosBrutosTotales').textContent = "S/ " + brutoTotales.toFixed(2);
+  document.getElementById('ingresosNetosTotales').textContent = "S/ " + netoTotales.toFixed(2);
+  // También podrías asignar ingresosEsperados e ingresosNetos según tu lógica
+  document.getElementById('ingresosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetos').textContent = "S/ " + netoTotales.toFixed(2);
+
+  // Si deseas actualizar un indicador de variación, por ejemplo:
+  const variacion = netoTotales; // o alguna otra fórmula
+  const indicadorEl = document.getElementById('indicadorVariacion');
+  indicadorEl.textContent = "Variación: " + (variacion >= 0 ? "+" : "") + variacion.toFixed(2) + "%";
+  if (variacion < 0) {
+    indicadorEl.style.color = "red";
+  } else {
+    indicadorEl.style.color = "";
+  }
+
+  // Renderizar tablas y actualizar gráficos (con tus funciones actuales)
+  renderTablaEgresos(egresosFiltrados);
+  renderTablaIngresos(mesSeleccionado);
+  actualizarGraficosFinanzas();
+}
+
+  function calcularEgresosTipo(egresos, tipo){
+    return egresos.filter(e => e.tipo === tipo).reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
+  }
+  function calcularEgresosTotales(egresos){
+    return egresos.reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
+  }
+  function renderTablaEgresos(egresos){
+    const tbody = document.getElementById('tablaEgresos').querySelector('tbody');
+    tbody.innerHTML = '';
+    egresos.forEach(e => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = e.nombre;
+      row.insertCell(1).textContent = e.tipo;
+      row.insertCell(2).textContent = e.subtipo;
+      row.insertCell(3).textContent = e.cantidad;
+      row.insertCell(4).textContent = e.descuento;
+      row.insertCell(5).textContent = (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)).toFixed(2);
+      const accCell = row.insertCell(6);
+      const btnEd = document.createElement('button');
+      btnEd.textContent = 'Editar';
+      btnEd.onclick = () => editarEgreso(e.id);
+      accCell.appendChild(btnEd);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => eliminarEgreso(e.id);
+      accCell.appendChild(btnDel);
+    });
+  }
+function renderTablaIngresos(mesSeleccionado) {
+  const tbody = document.getElementById('tablaIngresos').querySelector('tbody');
+  tbody.innerHTML = '';
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if(child.mesRegistro === mesSeleccionado) {
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = child.name + " " + child.lastname;
+        const tipo = (serv.title === "Matrícula") ? "Matrícula" : "Taller";
+        row.insertCell(1).textContent = tipo;
+        row.insertCell(2).textContent = (tipo === "Taller" && child.variantId) ? getVariantName(child.variantId) : "";
+        row.insertCell(3).textContent = "S/ " + (child.total || 0).toFixed(2);
+        // Nueva celda para el botón "Pagó Mensualidad"
+        const cellPagoMensual = row.insertCell(4);
+        const btnPagoMensual = document.createElement('button');
+        btnPagoMensual.textContent = child.pagoPension ? "Sí" : "No";
+btnPagoMensual.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
+        btnPagoMensual.style.color = "#fff";
+        btnPagoMensual.style.border = "none";
+        btnPagoMensual.style.borderRadius = "6px";
+        btnPagoMensual.style.padding = "6px 10px";
+        btnPagoMensual.onclick = () => {
+  child.pagoPension = !child.pagoPension;
+  btnPagoMensual.textContent = child.pagoPension ? "Sí" : "No";
+  btnPagoMensual.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
+  saveToFirebaseServices();
+  renderTablaIngresos(mesSeleccionado);
+  renderFinanzas();
+};
+        cellPagoMensual.appendChild(btnPagoMensual);
+      }
+    });
+  });
+}
+
+
+
+  function agregarEgreso(){
+  const nombre = document.getElementById('egresoNombre').value.trim();
+  const tipo = document.getElementById('egresoTipo').value;
+  const subtipo = document.getElementById('egresoSubtipo').value;
+  const cantidad = document.getElementById('egresoCantidad').value;
+  const descuento = document.getElementById('egresoDescuento').value;
+  if(!nombre || !tipo || !subtipo || !cantidad){
+    alert("Completa todos los campos del egreso");
+    return;
+  }
+  const mesAnio = document.getElementById('finanzasMes').value.split('-');
+  const anio = mesAnio[0];
+  const mes = parseInt(mesAnio[1]);
+  const nuevo = {
+    id: nextEgresoId++,
+    nombre,
+    tipo,
+    subtipo,
+    cantidad,
+    descuento: descuento || 0,
+    anio: anio,
+    mes: mes
+  };
+  finanzasData.egresos.push(nuevo);
+  // Limpiar campos
+  document.getElementById('egresoNombre').value = '';
+  document.getElementById('egresoTipo').value = '';
+  document.getElementById('egresoSubtipo').value = '';
+  document.getElementById('egresoCantidad').value = '';
+  document.getElementById('egresoDescuento').value = '';
+  renderFinanzas();
+  saveFinanzasData(); // Guarda en Firebase
+}
+
+  function editarEgreso(id){
+    // Función para editar egreso: se deben cargar los datos en el formulario y luego actualizar el registro.
+    const egreso = finanzasData.egresos.find(e => e.id === id);
+    if(!egreso) return;
+    document.getElementById('egresoNombre').value = egreso.nombre;
+    document.getElementById('egresoTipo').value = egreso.tipo;
+    document.getElementById('egresoSubtipo').value = egreso.subtipo;
+    document.getElementById('egresoCantidad').value = egreso.cantidad;
+    document.getElementById('egresoDescuento').value = egreso.descuento;
+    // Eliminar el registro para que al agregar se reescriba
+    finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
+  }
+  function eliminarEgreso(id){
+  if(!confirm("¿Eliminar egreso?")) return;
+  finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
+  renderFinanzas();
+  saveFinanzasData(); // Asegúrate de llamar a guardar datos en Firebase
+}
+
+  // Funciones para actualizar gráficos (placeholders)
+function actualizarGraficosFinanzas(){
+// Obtener datos para Total Mensual
+const mesSeleccionado = document.getElementById('finanzasMes').value;
+const ingresosNetosTotales = calcularIngresosNetosTotales(mesSeleccionado);
+const ingresosNetosEsperados = calcularIngresosNetoEsperado(mesSeleccionado);
+const faltante = Math.max(ingresosNetosEsperados - ingresosNetosTotales, 0);
+
+const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
+if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
+  window.chartFinanzasCircular.destroy();
+}
+window.chartFinanzasCircular = new Chart(ctxPastel, {
+  type: 'pie',
+  data: {
+    labels: ['Pagado', 'Falta'],
+    datasets: [{
+      data: [ingresosNetosTotales, faltante],
+      backgroundColor: ['#3BB273', '#E74C3C']
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false
+  }
+});
+const totalFijos = calcularEgresosTipo(
+  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
+  "Fijo"
+);
+const totalVariables = calcularEgresosTipo(
+  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
+  "Variable"
+);
+const ctxPastelEgresos = document.getElementById('chartEgresosCircular').getContext('2d');
+if (window.chartEgresosCircular && typeof window.chartEgresosCircular.destroy === 'function') {
+  window.chartEgresosCircular.destroy();
+}
+window.chartEgresosCircular = new Chart(ctxPastelEgresos, {
+  type: 'pie',
+  data: {
+    labels: ['Fijos', 'Variables'],
+    datasets: [{
+      data: [totalFijos, totalVariables],
+      backgroundColor: ['#4a90e2', '#f1c40f']
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+let ingresosMatricula = 0, ingresosTaller = 0;
+services.forEach(serv => {
+  serv.children.forEach(child => {
+    if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
+      if(serv.title === "Matrícula") {
+        ingresosMatricula += child.total || 0;
+      } else {
+        ingresosTaller += child.total || 0;
+      }
+    }
+  });
+});
+const ctxPastelIngresos = document.getElementById('chartIngresosCircular').getContext('2d');
+if (window.chartIngresosCircular && typeof window.chartIngresosCircular.destroy === 'function') {
+  window.chartIngresosCircular.destroy();
+}
+window.chartIngresosCircular = new Chart(ctxPastelIngresos, {
+  type: 'pie',
+  data: {
+    labels: ['Matrícula', 'Taller'],
+    datasets: [{
+      data: [ingresosMatricula, ingresosTaller],
+      backgroundColor: ['#3BB273', '#f1c40f']
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+}
+function obtenerDatosLinealIngresosNetos(){
+  const labels = [];
+  const datos = [];
+  const d = new Date();
+  // Ejemplo: últimos 12 meses
+  for(let i = 11; i >= 0; i--){
+    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    let mes = fecha.getMonth() + 1;
+    let anio = fecha.getFullYear();
+    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
+    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
+    datos.push(calcularIngresosNetosTotales(key));
+  }
+  return { labels, datos };
+}
+
+const datosLineal = obtenerDatosLinealIngresosNetos();
+const ctxLineal = document.getElementById('chartFinanzasLinealTotal').getContext('2d');
+if (window.chartFinanzasLinealTotal && typeof window.chartFinanzasLinealTotal.destroy === 'function') {
+  window.chartFinanzasLinealTotal.destroy();
+}
+window.chartFinanzasLinealTotal = new Chart(ctxLineal, {
+  type: 'line',
+  data: {
+    labels: datosLineal.labels,
+    datasets: [{
+      label: 'Ingresos Netos Totales',
+      data: datosLineal.datos,
+      borderColor: '#3BB273',
+      backgroundColor: 'rgba(59,178,115,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+const datosLinealIngresos = obtenerDatosLinealIngresosNetos(); // Reutilizando la función definida para Total Mensual
+const ctxLinealIngresos = document.getElementById('chartIngresosLineal').getContext('2d');
+if (window.chartIngresosLineal && typeof window.chartIngresosLineal.destroy === 'function') {
+  window.chartIngresosLineal.destroy();
+}
+window.chartIngresosLineal = new Chart(ctxLinealIngresos, {
+  type: 'line',
+  data: {
+    labels: datosLinealIngresos.labels,
+    datasets: [{
+      label: 'Ingresos Netos Totales',
+      data: datosLinealIngresos.datos,
+      borderColor: '#3BB273',
+      backgroundColor: 'rgba(59,178,115,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+function obtenerDatosLinealEgresos(){
+  const labels = [];
+  const datos = [];
+  const d = new Date();
+  for(let i = 11; i >= 0; i--){
+    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    let mes = fecha.getMonth() + 1;
+    let anio = fecha.getFullYear();
+    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
+    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
+    // Suma total de egresos para ese mes
+    const egresosMes = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === key);
+    datos.push(calcularEgresosTotales(egresosMes));
+  }
+  return { labels, datos };
+}
+
+const datosLinealEgresos = obtenerDatosLinealEgresos();
+const ctxLinealEgresos = document.getElementById('chartEgresosLineal').getContext('2d');
+if (window.chartEgresosLineal && typeof window.chartEgresosLineal.destroy === 'function') {
+  window.chartEgresosLineal.destroy();
+}
+window.chartEgresosLineal = new Chart(ctxLinealEgresos, {
+  type: 'line',
+  data: {
+    labels: datosLinealEgresos.labels,
+    datasets: [{
+      label: 'Egresos Totales',
+      data: datosLinealEgresos.datos,
+      borderColor: '#E74C3C',
+      backgroundColor: 'rgba(231,76,60,0.2)'
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+
+  // Función para cambiar de pestaña en Finanzas
+  function openTabFinanzas(tabName){
+    document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
+    document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
+    document.getElementById('contentFinanzasIngresos').classList.remove('activeTabContent');
+    document.getElementById('tabFinanzasTotal').classList.remove('activeTab');
+    document.getElementById('tabFinanzasEgresos').classList.remove('activeTab');
+    document.getElementById('tabFinanzasIngresos').classList.remove('activeTab');
+    if(tabName === 'Total'){
+      document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasTotal').classList.add('activeTab');
+    } else if(tabName === 'Egresos'){
+      document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
+    } else if(tabName === 'Ingresos'){
+      document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
+    }
+  }
+
+  /**************************************************************
+   * FICHA INFORMATIVA (Ya existente)
    **************************************************************/
   let currentFichaChild = null;
   function openFicha(childObj) {
@@ -1312,7 +2281,6 @@
       const h3 = document.createElement('h3');
       h3.textContent = "Ficha Informativa (Completada)";
       cont.appendChild(h3);
-      // Mostrar todas las respuestas iterando sobre el objeto ficha
       cont.innerHTML += createFichaResumenHTML(ch.ficha);
       const btnEd = document.createElement('button');
       btnEd.className = 'finish-btn';
@@ -1343,7 +2311,6 @@
     return html;
   }
   function createFichaForm(ch, container) {
-    // Sección 1
     const sec1 = document.createElement('div');
     sec1.className = 'subsection';
     let h4_1 = document.createElement('h4');
@@ -1369,7 +2336,6 @@
       options: ["Solo el Padre", "Solo la Madre", "Ambos Padres", "Apoderado"]
     }));
     container.appendChild(sec1);
-    // Sección 2 (Padre)
     const sec2 = document.createElement('div');
     sec2.className = 'subsection';
     let hh2 = document.createElement('h4');
@@ -1385,7 +2351,6 @@
     sec2.appendChild(makeField("Teléfono", "telPadre", "text", ch.ficha, { required: true }));
     sec2.appendChild(makeField("Correo Electrónico", "emailPadre", "text", ch.ficha, { required: true }));
     container.appendChild(sec2);
-    // Sección 3 (Madre)
     const sec3 = document.createElement('div');
     sec3.className = 'subsection';
     let hh3 = document.createElement('h4');
@@ -1401,7 +2366,6 @@
     sec3.appendChild(makeField("Teléfono", "telMadre", "text", ch.ficha, { required: true }));
     sec3.appendChild(makeField("Correo Electrónico", "emailMadre", "text", ch.ficha, { required: true }));
     container.appendChild(sec3);
-    // Sección 4 (Apoderado)
     const sec4 = document.createElement('div');
     sec4.className = 'subsection';
     let hh4 = document.createElement('h4');
@@ -1417,7 +2381,6 @@
     sec4.appendChild(makeField("Teléfono", "telApod", "text", ch.ficha, { required: true }));
     sec4.appendChild(makeField("Correo Electrónico", "emailApod", "text", ch.ficha, { required: true }));
     container.appendChild(sec4);
-    // Sección 5: Desarrollo
     const sec5 = document.createElement('div');
     sec5.className = 'subsection';
     let hh5 = document.createElement('h4');
@@ -1434,7 +2397,6 @@
     sec5.appendChild(makeField("¿Ya dijo sus primeras palabras?", "primerasPalabras", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
     sec5.appendChild(makeField("¿Ya habla con fluidez?", "hablaFluidez", "select", ch.ficha, { required: true, options: ["Sí", "No"] }));
     container.appendChild(sec5);
-    // Sección 6: Salud
     const sec6 = document.createElement('div');
     sec6.className = 'subsection';
     let hh6 = document.createElement('h4');
@@ -1470,7 +2432,6 @@
         return;
       }
       ch.fichaCompleta = true;
-      // Guarda los cambios de ficha en el servicio (si corresponde) en Firestore
       saveToFirebaseServices();
       renderFicha(ch);
     };
@@ -1550,21 +2511,35 @@
     renderMatriculasList();
   }
   function monthlyPensionCheck(){
-  const matServ = services.find(s => s.title === 'Matrícula');
-  if(!matServ) return;
-
-  const currentYM = getYearMonth();
-  matServ.children.forEach(ch => {
-    if(ch.lastPagoCheck && ch.lastPagoCheck !== currentYM){
-      if(!ch.pagoPension){
-        ch.pensionesAtrasadas = (ch.pensionesAtrasadas || 0) + 1;
+    const matServ = services.find(s => s.title === 'Matrícula');
+    if(!matServ) return;
+    const currentYM = getYearMonth();
+    matServ.children.forEach(ch => {
+      if(ch.lastPagoCheck && ch.lastPagoCheck !== currentYM){
+        if(!ch.pagoPension){
+          ch.pensionesAtrasadas = (ch.pensionesAtrasadas || 0) + 1;
+        }
+        ch.pagoPension = false;
+        ch.lastPagoCheck = currentYM;
       }
-      ch.pagoPension = false;
-      ch.lastPagoCheck = currentYM;
-    }
-  });
-  saveToFirebaseServices();
- }
+    });
+    saveToFirebaseServices();
+  }
+  function eliminarSubtipo() {
+  const sel = document.getElementById('egresoSubtipo');
+  const subtipoSeleccionado = sel.value;
+  if(!subtipoSeleccionado) {
+    alert("Selecciona un subtipo para eliminar");
+    return;
+  }
+  if(confirm(`¿Seguro que deseas eliminar el subtipo "${subtipoSeleccionado}"?`)) {
+    // Elimina el subtipo del array
+    subtiposEgresos = subtiposEgresos.filter(st => st !== subtipoSeleccionado);
+    cargarSubtiposEgresos();
+    saveFinanzasData(); // Guarda la lista actualizada en Firebase
+  }
+}
+
   function renderMatriculasList(){
     const matServ = services.find(s => s.title === 'Matrícula');
     if(!matServ) return;
@@ -1574,7 +2549,6 @@
       const row = tbody.insertRow();
       row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
       row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
-      // Ficha Informativa
       const cellF = row.insertCell(2);
       const btnF = document.createElement('button');
       btnF.className = 'ficha-btn';
@@ -1585,7 +2559,6 @@
       btnF.textContent = 'Ficha Informativa';
       btnF.onclick = () => openFicha(ch);
       cellF.appendChild(btnF);
-      // Pago Pensión
       const cellP = row.insertCell(3);
       const btnP = document.createElement('button');
       btnP.className = 'pension-btn';
@@ -1601,7 +2574,6 @@
         saveToFirebaseServices();
       };
       cellP.appendChild(btnP);
-      // Pensiones Atrasadas
       const cellA = row.insertCell(4);
       const inputA = document.createElement('input');
       inputA.type = 'number';
@@ -1621,7 +2593,6 @@
     if(!matServ) return;
     let arr = [...matServ.children];
     if(valAno){
-      // Suponiendo que el campo variantId almacena el año (ajusta según tu lógica)
       arr = arr.filter(ch => getVariantName(ch.variantId) === valAno);
     }
     if(valPension === 'SI'){
@@ -1672,22 +2643,170 @@
       cellA.appendChild(inputA);
     });
   }
+async function loadUsersFromFirebase(){
+  // Leemos todos los docs de la colección "users"
+  const ref = collection(db, "users");
+  const snap = await getDocs(ref);
+  users = snap.docs.map(doc => ({
+    username: doc.id,
+    ...doc.data()
+  }));
+}
+async function goToUsers(){
+  // Solo el usuario "renatozepi" (superadmin) puede entrar, 
+  // o podrías hacer un permiso p.adminUsers
+  if(!currentUser || currentUser.username !== "renatozepi"){
+    alert("Solo el usuario administrador principal puede gestionar usuarios.");
+    return;
+  }
+  // Ocultamos login y landing
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('usersContainer').style.display = 'block';
+  screenStack.push("users");
+  await loadUsersFromFirebase();
+  showUsersList();
+  openTabUsers('UsersMain');
+}
+
+async function saveUserToFirebase(userObj){
+  // userObj.username es la key
+  const docRef = doc(db, "users", userObj.username);
+  await setDoc(docRef, userObj, { merge: true });
+}
+function showUsersList(){
+  const container = document.getElementById('usersList');
+  container.innerHTML = '';
+  users.forEach(u => {
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.justifyContent = 'space-between';
+    div.style.border = '1px solid #ccc';
+    div.style.borderRadius = '6px';
+    div.style.padding = '6px';
+    div.style.marginBottom = '5px';
+
+    const leftSpan = document.createElement('span');
+    leftSpan.textContent = `Usuario: ${u.username}`;
+    div.appendChild(leftSpan);
+
+    const rightDiv = document.createElement('div');
+    // Botón Editar
+    const btnEd = document.createElement('button');
+    btnEd.textContent = 'Editar Permisos';
+    btnEd.onclick = () => editUser(u.username);
+    rightDiv.appendChild(btnEd);
+    div.appendChild(rightDiv);
+
+    container.appendChild(div);
+  });
+}
+async function crearUser(){
+  const userName = document.getElementById('newUserName').value.trim();
+  const userPass = document.getElementById('newUserPass').value;
+  if(!userName || !userPass){
+    alert("Completa el nombre de usuario y la contraseña.");
+    return;
+  }
+
+  // Permisos por defecto, todos false
+  const defaultPerms = {
+    macros:false, macrosNinos:false,
+    services:false, servicesVariants:false, servicesChildren:false,
+    matriculas:false,
+    finanzas:false, finanzasTotal:false, finanzasEgresos:false, finanzasIngresos:false
+  };
+
+  const newUser = {
+    username: userName,
+    password: userPass,
+    permisos: defaultPerms
+  };
+
+  await saveUserToFirebase(newUser);
+  alert("Usuario creado!");
+  document.getElementById('newUserName').value = '';
+  document.getElementById('newUserPass').value = '';
+  await loadUsersFromFirebase();
+  showUsersList();
+}
+function editUser(username){
+  editingUsername = username;
+  openTabUsers('EditUser');
+  const u = users.find(x => x.username === username);
+  if(!u) return;
+  document.getElementById('currentUserTitle').textContent = u.username;
+
+  const p = u.permisos || {};
+  document.getElementById('permMacros').checked           = !!p.macros;
+  document.getElementById('permMacrosNinos').checked      = !!p.macrosNinos;
+  document.getElementById('permServices').checked         = !!p.services;
+  document.getElementById('permServicesVariants').checked = !!p.servicesVariants;
+  document.getElementById('permServicesChildren').checked = !!p.servicesChildren;
+  document.getElementById('permMatriculas').checked       = !!p.matriculas;
+  document.getElementById('permFinanzas').checked         = !!p.finanzas;
+  document.getElementById('permFinanzasTotal').checked    = !!p.finanzasTotal;
+  document.getElementById('permFinanzasEgresos').checked  = !!p.finanzasEgresos;
+  document.getElementById('permFinanzasIngresos').checked = !!p.finanzasIngresos;
+}
+
+async function guardarPermisosUsuario(){
+  if(!editingUsername) return;
+  const idx = users.findIndex(x => x.username === editingUsername);
+  if(idx < 0) return;
+  const u = users[idx];
+
+  u.permisos.macros            = document.getElementById('permMacros').checked;
+  u.permisos.macrosNinos       = document.getElementById('permMacrosNinos').checked;
+  u.permisos.services          = document.getElementById('permServices').checked;
+  u.permisos.servicesVariants  = document.getElementById('permServicesVariants').checked;
+  u.permisos.servicesChildren  = document.getElementById('permServicesChildren').checked;
+  u.permisos.matriculas        = document.getElementById('permMatriculas').checked;
+  u.permisos.finanzas          = document.getElementById('permFinanzas').checked;
+  u.permisos.finanzasTotal     = document.getElementById('permFinanzasTotal').checked;
+  u.permisos.finanzasEgresos   = document.getElementById('permFinanzasEgresos').checked;
+  u.permisos.finanzasIngresos  = document.getElementById('permFinanzasIngresos').checked;
+
+  await saveUserToFirebase(u);
+  alert("Permisos actualizados!");
+  openTabUsers('UsersMain');
+  showUsersList();
+}
+function openTabUsers(tabName){
+  document.getElementById('contentUsersMain').classList.remove('activeTabContent');
+  document.getElementById('contentEditUser').classList.remove('activeTabContent');
+  document.getElementById('tabUsersMain').classList.remove('activeTab');
+  document.getElementById('tabEditUser').classList.remove('activeTab');
+
+  if(tabName === 'UsersMain'){
+    document.getElementById('contentUsersMain').classList.add('activeTabContent');
+    document.getElementById('tabUsersMain').classList.add('activeTab');
+  } else {
+    document.getElementById('contentEditUser').classList.add('activeTabContent');
+    document.getElementById('tabEditUser').style.display = 'block';
+    document.getElementById('tabEditUser').classList.add('activeTab');
+  }
+}
+
 
   /**************************************************************
    * EXPOSE FUNCTIONS TO GLOBAL (after DOMContentLoaded)
    **************************************************************/
-  document.addEventListener('DOMContentLoaded', () => {
+  let currentUser = null;  
+   document.addEventListener('DOMContentLoaded', () => {
     window.goToMacros = goToMacros;
     window.goToServices = goToServices;
     window.goToMatriculas = goToMatriculas;
+    window.goToFinanzas = goToFinanzas;
     window.goBack = goBack;
     window.goBackFicha = goBackFicha;
     window.openTabMacros = openTabMacros;
     window.crearMacro = crearMacro;
     window.agregarOguardarNino = agregarOguardarNino;
+    window.agregarEgreso = agregarEgreso;
     window.generarTxt = generarTxt;
     window.guardarYVolver = guardarYVolver;
     window.openTabServices = openTabServices;
+    window.openTabFinanzas = openTabFinanzas;
     window.crearService = crearService;
     window.agregarOguardarVariante = agregarOguardarVariante;
     window.doneVariants = doneVariants;
@@ -1696,6 +2815,11 @@
     window.filtrarMatriculas = filtrarMatriculas;
     window.initMatriculas = initMatriculas;
     window.renderMatriculasList = renderMatriculasList;
+    window.agregarNuevoSubtipo = agregarNuevoSubtipo;
+    window.cambiarMesFinanzas = cambiarMesFinanzas;
+    window.eliminarSubtipo = eliminarSubtipo;
+    window.currentUser = currentUser;
+    window.goToUsers = goToUsers;
   });
 </script>
 </body>
