@@ -76,14 +76,15 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
   <script>
-     const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "definitivo-4841f.firebaseapp.com",
-      projectId: "definitivo-4841f",
-      storageBucket: "definitivo-4841f.appspot.com",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
-    };
+    // Reemplaza los valores de firebaseConfig con los tuyos
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPSya0kEAydB8_WxEbei56KF36ZmJ1n7I",
+    authDomain: "definitivo-4841f.firebaseapp.com",
+    projectId: "definitivo-4841f",
+    storageBucket: "definitivo-4841f.firebasestorage.app",
+    messagingSenderId: "92662019661",
+    appId: "1:92662019661:web:de3ccc7b6b5ae5e4134e04"
+  };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -120,11 +121,17 @@
           return;
         }
 
-        // Guardar permisos en localStorage
+        // Asigna el ID del documento como username
+        currentUser = {
+          username: userDoc.id,
+          permisos: userData.permisos || {}
+        };
+
+        // Guardar permisos y usuario en localStorage
         localStorage.setItem("permisos", JSON.stringify(userData.permisos));
         localStorage.setItem("usuario", username);
 
-        // Redirigir al dashboard
+        // Redirigir al dashboard (cambia "dashboard.html" por la ruta correcta)
         window.location.href = "dashboard.html";
 
       } catch (error) {
@@ -135,3 +142,4 @@
   </script>
 </body>
 </html>
+
