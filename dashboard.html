@@ -12,6 +12,28 @@
 
   <style>
     /* =================== ESTILOS GENERALES =================== */
+#logoutContainer {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 9999;
+}
+
+#logoutContainer button {
+  background-color: #f1c40f;
+  color: #1a2e55;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s ease;
+}
+
+#logoutContainer button:hover {
+  box-shadow: 0 4px 7px rgba(0, 0, 0, 0.2);
+}
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -22,15 +44,7 @@
     }
     .hidden { display: none !important; }
     .active { display: block !important; }
-<!-- =================== LOGIN PAGE =================== -->
-<div id="loginPage" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-  <h2>Iniciar Sesión</h2>
-  <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 250px;">
-    <input type="text" id="loginUsername" placeholder="Usuario" />
-    <input type="password" id="loginPassword" placeholder="Contraseña" />
-    <button onclick="attemptLogin()">Ingresar</button>
-  </div>
-</div>
+
 
 
     /* =================== LANDING PAGE =================== */
@@ -444,7 +458,7 @@
   </style>
 </head>
 <body>
-  <div id="logoutContainer" style="position:absolute; top:15px; right:15px; display:none;">
+  <div id="logoutContainer" style="position:absolute; top:15px; right:15px;">
     <button onclick="logout()" style="background-color:#f1c40f; border:none; border-radius:6px; padding:8px; font-weight:600; cursor:pointer;">
       Cerrar Sesión
     </button>
@@ -842,22 +856,19 @@
   <div id="fichaContent" style="margin-bottom:30px;"></div>
 </div>
 
-<!-- =================== SCRIPT =================== -->
+<!-- Coloca esto al inicio del bloque de <script> en tu dashboard -->
 <script type="module">
-  /*************************************************************
-   * Firebase Initialization and Firestore Setup
-   *************************************************************/
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  collection,    // <--- Agregar
-  getDocs       // <--- Agregar
-} from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    getDocs,
+    deleteDoc
+  } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
 
-  // Tu configuración de Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyCPSya0kEAydB8_WxEbei56KF36ZmJ1n7I",
     authDomain: "definitivo-4841f.firebaseapp.com",
@@ -867,9 +878,18 @@ import {
     appId: "1:92662019661:web:de3ccc7b6b5ae5e4134e04"
   };
 
-  // Inicializar Firebase
   const appFirebase = initializeApp(firebaseConfig);
   const db = getFirestore(appFirebase);
+
+  // Recuperar usuario y permisos del localStorage
+let currentUser = {
+  username: localStorage.getItem("usuario"),
+  permisos: JSON.parse(localStorage.getItem("permisos") || "{}")
+};
+
+if (!currentUser.username) {
+  window.location.href = "login.html";
+}
 
   /*************************************************************
    * Global Variables and Screen Navigation
@@ -879,15 +899,17 @@ import {
   let editingUsername = null;
   let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
 
-async function goToMacros(){
-  // Verificar permiso
-  if(!currentUser || !currentUser.permisos.macros){
+async function goToMacros() {
+  // Verificar permiso (si lo deseas)
+  if (!currentUser || !currentUser.permisos.macros) {
     alert("No tienes permiso para acceder a Macros.");
     return;
   }
-  document.getElementById('loginPage').style.display = 'none';
+  // Ya no necesitamos ocultar el loginPage, porque no existe en el dashboard
+  document.getElementById('landingPage').classList.add('hidden');
   document.getElementById('macrosContainer').classList.add('activeContainer');
-  screenStack.push("macros");
+  
+  // Carga de datos y demás
   await initMacros();
 }
 
@@ -953,28 +975,35 @@ async function goToFinanzas(){
   // Inicializar Finanzas (que a su vez llama a renderFinanzas y actualiza los gráficos)
   await initFinanzas();
 }
-  function goBack(){
-    screenStack.pop();
-    const current = screenStack[screenStack.length-1];
-    document.getElementById('landingPage').classList.add('hidden');
-    document.getElementById('macrosContainer')?.classList.remove('activeContainer');
-    document.getElementById('servicesContainer')?.classList.remove('activeContainer');
-    document.getElementById('matriculasContainer')?.classList.remove('activeContainer');
-    document.getElementById('finanzasContainer')?.classList.remove('activeContainer');
-    if(current==="landing"){
-      document.getElementById('landingPage').classList.remove('hidden');
-    } else if(current==="macros"){
-      document.getElementById('macrosContainer').classList.add('activeContainer');
-    } else if(current==="services"){
-      document.getElementById('servicesContainer').classList.add('activeContainer');
-    } else if(current==="matriculas"){
-      document.getElementById('matriculasContainer').classList.add('activeContainer');
-      renderMatriculasList();
-    } else if(current==="finanzas"){
-      document.getElementById('finanzasContainer').classList.add('activeContainer');
-      renderFinanzas();
-    }
+function goBack(){
+  // Elimina la última entrada de la pila
+  screenStack.pop();
+  // Si la pila quedó vacía, se fuerza que el current sea "landing"
+  const current = screenStack[screenStack.length - 1] || "landing";
+
+  // Oculta todos los contenedores
+  document.getElementById('landingPage').classList.add('hidden');
+  document.getElementById('macrosContainer')?.classList.remove('activeContainer');
+  document.getElementById('servicesContainer')?.classList.remove('activeContainer');
+  document.getElementById('matriculasContainer')?.classList.remove('activeContainer');
+  document.getElementById('finanzasContainer')?.classList.remove('activeContainer');
+
+  // Según el valor actual, muestra el contenedor correspondiente
+  if(current === "landing"){
+    document.getElementById('landingPage').classList.remove('hidden');
+  } else if(current === "macros"){
+    document.getElementById('macrosContainer').classList.add('activeContainer');
+  } else if(current === "services"){
+    document.getElementById('servicesContainer').classList.add('activeContainer');
+  } else if(current === "matriculas"){
+    document.getElementById('matriculasContainer').classList.add('activeContainer');
+    renderMatriculasList();
+  } else if(current === "finanzas"){
+    document.getElementById('finanzasContainer').classList.add('activeContainer');
+    renderFinanzas();
   }
+}
+
   function goBackFicha(){
     screenStack.pop();
     document.getElementById('fichaInformativaPanel').style.display = 'none';
@@ -1067,8 +1096,12 @@ async function attemptLogin(){
 }
 
 function logout(){
+  // Limpiar la variable actual y el almacenamiento local
   currentUser = null;
-  // Ocultamos todos los contenedores
+  localStorage.removeItem("usuario");
+  localStorage.removeItem("permisos");
+
+  // Ocultar todos los contenedores de la app
   document.getElementById('landingPage').classList.add('hidden');
   document.getElementById('macrosContainer').classList.remove('activeContainer');
   document.getElementById('servicesContainer').classList.remove('activeContainer');
@@ -1076,46 +1109,67 @@ function logout(){
   document.getElementById('finanzasContainer').classList.remove('activeContainer');
   document.getElementById('usersContainer').style.display = 'none';
 
-  // Ocultamos logout
+  // Ocultar el contenedor de logout
   document.getElementById('logoutContainer').style.display = 'none';
 
-  // Mostramos login
-  document.getElementById('loginPage').style.display = 'flex';
-
-  // Limpiar inputs
-  document.getElementById('loginUsername').value = '';
-  document.getElementById('loginPassword').value = '';
+  // Redirigir al login
+  window.location.href = "login.html";
 }
+
 function applyPermissionsToMenus(){
   if(!currentUser) return;
   const p = currentUser.permisos || {};
-
+  console.log("Aplicando permisos:", p);
+  
   // Botones del landing
-    const usersBtn = document.querySelector(".landing-buttons button[onclick='goToUsers()']");
-  if(usersBtn){
-    usersBtn.style.display = (currentUser.username === "renatozepi") ? 'inline-block' : 'none';
-  }
   const btnMacros = document.querySelector(".landing-buttons button[onclick='goToMacros()']");
   const btnServices = document.querySelector(".landing-buttons button[onclick='goToServices()']");
   const btnMatriculas = document.querySelector(".landing-buttons button[onclick='goToMatriculas()']");
   const btnFinanzas = document.querySelector(".landing-buttons button[onclick='goToFinanzas()']");
-  if(btnMacros)   btnMacros.style.display    = p.macros ? 'inline-block' : 'none';
-  if(btnServices) btnServices.style.display  = p.services ? 'inline-block' : 'none';
-  if(btnMatriculas) btnMatriculas.style.display = p.matriculas ? 'inline-block' : 'none';
-  if(btnFinanzas) btnFinanzas.style.display = p.finanzas ? 'inline-block' : 'none';
 
+  if(btnMacros) {
+    btnMacros.style.display = p.macros ? 'inline-block' : 'none';
+    console.log("btnMacros:", btnMacros.style.display);
+  }
+  if(btnServices) {
+    btnServices.style.display = p.services ? 'inline-block' : 'none';
+    console.log("btnServices:", btnServices.style.display);
+  }
+  if(btnMatriculas) {
+    btnMatriculas.style.display = p.matriculas ? 'inline-block' : 'none';
+    console.log("btnMatriculas:", btnMatriculas.style.display);
+  }
+  if(btnFinanzas) {
+    btnFinanzas.style.display = p.finanzas ? 'inline-block' : 'none';
+    console.log("btnFinanzas:", btnFinanzas.style.display);
+  }
+  
   // Pestañas Macros
-  if(!p.macrosNinos){
-    document.getElementById('tabNinos').style.display = 'none';
-  } else {
-    document.getElementById('tabNinos').style.display = 'block';
+  const tabNinos = document.getElementById('tabNinos');
+  if(tabNinos) {
+    tabNinos.style.display = p.macrosNinos ? 'block' : 'none';
+    console.log("tabNinos:", tabNinos.style.display);
   }
 
   // Pestañas Finanzas
-  document.getElementById('tabFinanzasTotal').style.display    = p.finanzasTotal ? 'block' : 'none';
-  document.getElementById('tabFinanzasEgresos').style.display  = p.finanzasEgresos ? 'block' : 'none';
-  document.getElementById('tabFinanzasIngresos').style.display = p.finanzasIngresos ? 'block' : 'none';
+  const tabFinTotal = document.getElementById('tabFinanzasTotal');
+  const tabFinEgresos = document.getElementById('tabFinanzasEgresos');
+  const tabFinIngresos = document.getElementById('tabFinanzasIngresos');
+
+  if(tabFinTotal) {
+    tabFinTotal.style.display = p.finanzasTotal ? 'block' : 'none';
+    console.log("tabFinanzasTotal:", tabFinTotal.style.display);
+  }
+  if(tabFinEgresos) {
+    tabFinEgresos.style.display = p.finanzasEgresos ? 'block' : 'none';
+    console.log("tabFinanzasEgresos:", tabFinEgresos.style.display);
+  }
+  if(tabFinIngresos) {
+    tabFinIngresos.style.display = p.finanzasIngresos ? 'block' : 'none';
+    console.log("tabFinanzasIngresos:", tabFinIngresos.style.display);
+  }
 }
+
 
 
   /****************************************************
@@ -2690,15 +2744,37 @@ function showUsersList(){
     div.appendChild(leftSpan);
 
     const rightDiv = document.createElement('div');
-    // Botón Editar
+    // Botón Editar Permisos
     const btnEd = document.createElement('button');
     btnEd.textContent = 'Editar Permisos';
     btnEd.onclick = () => editUser(u.username);
     rightDiv.appendChild(btnEd);
+
+    // Botón Eliminar (no se muestra para el usuario principal, por ejemplo "renatozepi")
+    if(u.username !== "renatozepi") {
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => deleteUser(u.username);
+      rightDiv.appendChild(btnDel);
+    }
     div.appendChild(rightDiv);
 
     container.appendChild(div);
   });
+}
+async function deleteUser(username) {
+  if(!confirm(`¿Estás seguro de eliminar el usuario "${username}"?`)) return;
+  try {
+    await deleteDoc(doc(db, "users", username));
+    alert("Usuario eliminado");
+    // Recargar la lista
+    await loadUsersFromFirebase();
+    showUsersList();
+  } catch (error) {
+    console.error("Error eliminando usuario:", error);
+    alert("Error al eliminar usuario");
+  }
 }
 async function crearUser(){
   const userName = document.getElementById('newUserName').value.trim();
@@ -2791,7 +2867,6 @@ function openTabUsers(tabName){
   /**************************************************************
    * EXPOSE FUNCTIONS TO GLOBAL (after DOMContentLoaded)
    **************************************************************/
-  let currentUser = null;  
    document.addEventListener('DOMContentLoaded', () => {
     window.goToMacros = goToMacros;
     window.goToServices = goToServices;
@@ -2820,6 +2895,9 @@ function openTabUsers(tabName){
     window.eliminarSubtipo = eliminarSubtipo;
     window.currentUser = currentUser;
     window.goToUsers = goToUsers;
+    window.crearUser = crearUser;
+    window.guardarPermisosUsuario = guardarPermisosUsuario
+    window.logout = logout
   });
 </script>
 </body>
