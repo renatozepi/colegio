@@ -467,11 +467,12 @@
 <div id="landingPage">
   <h1>Bienvenid@, selecciona qué deseas administrar:</h1>
   <div class="landing-buttons">
-    <button onclick="goToMacros()">Administrador de Macros</button>
-    <button onclick="goToServices()">Administrador de Servicios</button>
-    <button onclick="goToMatriculas()">Administrador de Matrículas</button>
-    <button onclick="goToFinanzas()">Administrador de Finanzas</button>
-    <button onclick="goToUsers()">Administrador de Usuarios</button>
+    <!-- Agregamos id a cada botón -->
+    <button id="btnMacros" onclick="goToMacros()">Administrador de Macros</button>
+    <button id="btnServices" onclick="goToServices()">Administrador de Servicios</button>
+    <button id="btnMatriculas" onclick="goToMatriculas()">Administrador de Matrículas</button>
+    <button id="btnFinanzas" onclick="goToFinanzas()">Administrador de Finanzas</button>
+    <button id="btnUsers" onclick="goToUsers()">Administrador de Usuarios</button>
   </div>
 </div>
 
@@ -768,19 +769,18 @@
       </div>
     </div>
   </div>
-  <div class="tab-content" id="contentFinanzasIngresos">
-    <h2>Administrador de Finanzas - Ingresos</h2>
-    <!-- Se muestran dos secciones: Total Esperado y Total Neto -->
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
-      <div class="finanzas-card">
-        <h3>Total Esperado</h3>
-        <p id="ingresosEsperados">S/ 0.00</p>
-      </div>
-      <div class="finanzas-card">
-        <h3>Total Neto</h3>
-        <p id="ingresosNetos">S/ 0.00</p>
-      </div>
+<div class="tab-content" id="contentFinanzasIngresos">
+  <h2>Administrador de Finanzas - Ingresos</h2>
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+    <div class="finanzas-card">
+      <h3>Total Bruto</h3>
+      <p id="ingresosBruto">S/ 0.00</p> <!-- Cambiamos id e texto -->
     </div>
+    <div class="finanzas-card">
+      <h3>Total Neto</h3>
+      <p id="ingresosNetos">S/ 0.00</p>
+    </div>
+  </div>
     <!-- Tabla de ingresos (solo visualización) -->
     <table class="finanzas-table" id="tablaIngresos">
       <thead>
@@ -889,6 +889,9 @@ let currentUser = {
 
 if (!currentUser.username) {
   window.location.href = "login.html";
+} else {
+  // Ya tengo currentUser, así que aplico permisos:
+  applyPermissionsToMenus();
 }
 
   /*************************************************************
@@ -975,34 +978,37 @@ async function goToFinanzas(){
   // Inicializar Finanzas (que a su vez llama a renderFinanzas y actualiza los gráficos)
   await initFinanzas();
 }
-function goBack(){
-  // Elimina la última entrada de la pila
-  screenStack.pop();
-  // Si la pila quedó vacía, se fuerza que el current sea "landing"
-  const current = screenStack[screenStack.length - 1] || "landing";
+function goBack() {
+  screenStack.pop(); 
+  // Saca la última pantalla de la pila
 
-  // Oculta todos los contenedores
+  // Primero, ocultar/limpiar todos los contenedores
   document.getElementById('landingPage').classList.add('hidden');
-  document.getElementById('macrosContainer')?.classList.remove('activeContainer');
-  document.getElementById('servicesContainer')?.classList.remove('activeContainer');
-  document.getElementById('matriculasContainer')?.classList.remove('activeContainer');
-  document.getElementById('finanzasContainer')?.classList.remove('activeContainer');
+  document.getElementById('macrosContainer').classList.remove('activeContainer');
+  document.getElementById('servicesContainer').classList.remove('activeContainer');
+  document.getElementById('matriculasContainer').classList.remove('activeContainer');
+  document.getElementById('finanzasContainer').classList.remove('activeContainer');
+  // IMPORTANTE: oculta también el de Usuarios
+  document.getElementById('usersContainer').style.display = 'none'; 
+  // O document.getElementById('usersContainer').classList.remove('activeContainer');
 
-  // Según el valor actual, muestra el contenedor correspondiente
-  if(current === "landing"){
+  // Según la última pantalla en la pila, la muestras
+  const current = screenStack[screenStack.length - 1] || "landing";
+  if (current === "landing") {
     document.getElementById('landingPage').classList.remove('hidden');
-  } else if(current === "macros"){
+  } else if (current === "macros") {
     document.getElementById('macrosContainer').classList.add('activeContainer');
-  } else if(current === "services"){
+  } else if (current === "services") {
     document.getElementById('servicesContainer').classList.add('activeContainer');
-  } else if(current === "matriculas"){
+  } else if (current === "matriculas") {
     document.getElementById('matriculasContainer').classList.add('activeContainer');
-    renderMatriculasList();
-  } else if(current === "finanzas"){
+  } else if (current === "finanzas") {
     document.getElementById('finanzasContainer').classList.add('activeContainer');
-    renderFinanzas();
+  } else if (current === "users") {
+    document.getElementById('usersContainer').style.display = 'block';
   }
 }
+
 
   function goBackFicha(){
     screenStack.pop();
@@ -1116,58 +1122,49 @@ function logout(){
   window.location.href = "login.html";
 }
 
-function applyPermissionsToMenus(){
-  if(!currentUser) return;
+function applyPermissionsToMenus() {
+  // Si no hay usuario actual, no hacemos nada
+  if (!currentUser) return;
+
+  // Permisos del usuario actual
   const p = currentUser.permisos || {};
-  console.log("Aplicando permisos:", p);
-  
-  // Botones del landing
-  const btnMacros = document.querySelector(".landing-buttons button[onclick='goToMacros()']");
-  const btnServices = document.querySelector(".landing-buttons button[onclick='goToServices()']");
-  const btnMatriculas = document.querySelector(".landing-buttons button[onclick='goToMatriculas()']");
-  const btnFinanzas = document.querySelector(".landing-buttons button[onclick='goToFinanzas()']");
 
-  if(btnMacros) {
-    btnMacros.style.display = p.macros ? 'inline-block' : 'none';
-    console.log("btnMacros:", btnMacros.style.display);
-  }
-  if(btnServices) {
-    btnServices.style.display = p.services ? 'inline-block' : 'none';
-    console.log("btnServices:", btnServices.style.display);
-  }
-  if(btnMatriculas) {
-    btnMatriculas.style.display = p.matriculas ? 'inline-block' : 'none';
-    console.log("btnMatriculas:", btnMatriculas.style.display);
-  }
-  if(btnFinanzas) {
-    btnFinanzas.style.display = p.finanzas ? 'inline-block' : 'none';
-    console.log("btnFinanzas:", btnFinanzas.style.display);
-  }
+  // Muestra u oculta los botones del menú principal
+  // (Son los mismos botones que definimos con id en el HTML)
+  document.getElementById('btnMacros').style.display     = p.macros      ? 'inline-block' : 'none';
+  document.getElementById('btnServices').style.display   = p.services    ? 'inline-block' : 'none';
+  document.getElementById('btnMatriculas').style.display = p.matriculas  ? 'inline-block' : 'none';
+  document.getElementById('btnFinanzas').style.display   = p.finanzas    ? 'inline-block' : 'none';
   
-  // Pestañas Macros
+  // Por ejemplo, "Administrador de Usuarios" solo lo ve un usuario específico
+  document.getElementById('btnUsers').style.display = (currentUser.username === "renatozepi") 
+                                                      ? 'inline-block'
+                                                      : 'none';
+
+  // Si además quieres ocultar pestañas internas, puedes hacer algo similar:
+  // Pestaña "Registrar Niños" en Macros
   const tabNinos = document.getElementById('tabNinos');
-  if(tabNinos) {
+  if (tabNinos) {
+    // Se muestra solo si el usuario tiene el permiso "macrosNinos"
     tabNinos.style.display = p.macrosNinos ? 'block' : 'none';
-    console.log("tabNinos:", tabNinos.style.display);
   }
 
-  // Pestañas Finanzas
+  // Pestañas de Finanzas
   const tabFinTotal = document.getElementById('tabFinanzasTotal');
   const tabFinEgresos = document.getElementById('tabFinanzasEgresos');
   const tabFinIngresos = document.getElementById('tabFinanzasIngresos');
 
-  if(tabFinTotal) {
+  if (tabFinTotal) {
     tabFinTotal.style.display = p.finanzasTotal ? 'block' : 'none';
-    console.log("tabFinanzasTotal:", tabFinTotal.style.display);
   }
-  if(tabFinEgresos) {
+  if (tabFinEgresos) {
     tabFinEgresos.style.display = p.finanzasEgresos ? 'block' : 'none';
-    console.log("tabFinanzasEgresos:", tabFinEgresos.style.display);
   }
-  if(tabFinIngresos) {
+  if (tabFinIngresos) {
     tabFinIngresos.style.display = p.finanzasIngresos ? 'block' : 'none';
-    console.log("tabFinanzasIngresos:", tabFinIngresos.style.display);
   }
+
+  // Así puedes controlar cualquier otro elemento que requiera permisos específicos.
 }
 
 
@@ -1428,19 +1425,37 @@ function applyPermissionsToMenus(){
     link.click();
     document.body.removeChild(link);
   }
-  function openTabMacros(tabName){
-    document.getElementById('contentMacros').classList.remove('activeTabContent');
-    document.getElementById('contentNinos').classList.remove('activeTabContent');
-    document.getElementById('tabMacros').classList.remove('activeTab');
-    document.getElementById('tabNinos').classList.remove('activeTab');
-    if(tabName === 'Macros'){
-      document.getElementById('contentMacros').classList.add('activeTabContent');
-      document.getElementById('tabMacros').classList.add('activeTab');
-    } else {
-      document.getElementById('contentNinos').classList.add('activeTabContent');
-      document.getElementById('tabNinos').classList.add('activeTab');
+function openTabMacros(tabName) {
+  // 1) Validar permisos antes de desactivar nada
+  if (tabName === 'Macros') {
+    // Necesita permisos.macros
+    if (!currentUser.permisos.macros) {
+      alert("No tienes permiso para la pestaña principal de Macros.");
+      return;
+    }
+  } else if (tabName === 'Ninos') {
+    // Necesita permisos.macrosNinos
+    if (!currentUser.permisos.macrosNinos) {
+      alert("No tienes permiso para la pestaña 'Registrar Niños'.");
+      return;
     }
   }
+
+  // 2) Si pasó la validación, quitamos las clases de todas las pestañas
+  document.getElementById('contentMacros').classList.remove('activeTabContent');
+  document.getElementById('contentNinos').classList.remove('activeTabContent');
+  document.getElementById('tabMacros').classList.remove('activeTab');
+  document.getElementById('tabNinos').classList.remove('activeTab');
+
+  // 3) Activamos la pestaña solicitada
+  if (tabName === 'Macros') {
+    document.getElementById('contentMacros').classList.add('activeTabContent');
+    document.getElementById('tabMacros').classList.add('activeTab');
+  } else if (tabName === 'Ninos') {
+    document.getElementById('contentNinos').classList.add('activeTabContent');
+    document.getElementById('tabNinos').classList.add('activeTab');
+  }
+}
 
   /**************************************************************
    * ADMIN SERVICES
@@ -1517,24 +1532,47 @@ function applyPermissionsToMenus(){
     }
     MATRICULA_ID = mat.id;
   }
-  function openTabServices(tabName){
-    document.getElementById('contentServicesMain').classList.remove('activeTabContent');
-    document.getElementById('contentServicesVariants').classList.remove('activeTabContent');
-    document.getElementById('contentServicesChildren').classList.remove('activeTabContent');
-    document.getElementById('tabServicesMain').classList.remove('activeTab');
-    document.getElementById('tabServicesVariants').classList.remove('activeTab');
-    document.getElementById('tabServicesChildren').classList.remove('activeTab');
-    if(tabName === 'ServicesMain'){
-      document.getElementById('contentServicesMain').classList.add('activeTabContent');
-      document.getElementById('tabServicesMain').classList.add('activeTab');
-    } else if(tabName === 'ServicesVariants'){
-      document.getElementById('contentServicesVariants').classList.add('activeTabContent');
-      document.getElementById('tabServicesVariants').classList.add('activeTab');
-    } else {
-      document.getElementById('contentServicesChildren').classList.add('activeTabContent');
-      document.getElementById('tabServicesChildren').classList.add('activeTab');
+function openTabServices(tabName) {
+  // 1) Validar antes de quitar clases
+  if (tabName === 'ServicesMain') {
+    if (!currentUser.permisos.services) {
+      alert("No tienes permiso para la pestaña principal de Servicios.");
+      return;
+    }
+  } else if (tabName === 'ServicesVariants') {
+    if (!currentUser.permisos.servicesVariants) {
+      alert("No tienes permiso para 'Creador de Variantes'.");
+      return;
+    }
+  } else if (tabName === 'ServicesChildren') {
+    if (!currentUser.permisos.servicesChildren) {
+      alert("No tienes permiso para 'Administrar Niños' en Servicios.");
+      return;
     }
   }
+
+  // 2) Quitar clases de todas las pestañas
+  document.getElementById('contentServicesMain').classList.remove('activeTabContent');
+  document.getElementById('contentServicesVariants').classList.remove('activeTabContent');
+  document.getElementById('contentServicesChildren').classList.remove('activeTabContent');
+  document.getElementById('tabServicesMain').classList.remove('activeTab');
+  document.getElementById('tabServicesVariants').classList.remove('activeTab');
+  document.getElementById('tabServicesChildren').classList.remove('activeTab');
+
+  // 3) Agregar la que corresponde
+  if (tabName === 'ServicesMain') {
+    document.getElementById('contentServicesMain').classList.add('activeTabContent');
+    document.getElementById('tabServicesMain').classList.add('activeTab');
+  } else if (tabName === 'ServicesVariants') {
+    document.getElementById('contentServicesVariants').classList.add('activeTabContent');
+    document.getElementById('tabServicesVariants').classList.add('activeTab');
+  } else if (tabName === 'ServicesChildren') {
+    document.getElementById('contentServicesChildren').classList.add('activeTabContent');
+    document.getElementById('tabServicesChildren').classList.add('activeTab');
+  }
+}
+
+
   function showServicesList(){
     const container = document.getElementById('servicesList');
     container.innerHTML = '';
@@ -1570,37 +1608,65 @@ function applyPermissionsToMenus(){
       container.appendChild(div);
     });
   }
-  function crearService(){
-    const title = document.getElementById('tituloService').value.trim();
-    if(!title){
-      alert('Ingresa un título para el servicio');
-      return;
-    }
-    if(title === 'Matrícula'){
-      alert('Ya existe "Matrícula"');
-      return;
-    }
-    const newService = { id: nextServiceId++, title, variants: [], children: [] };
-    services.push(newService);
-    document.getElementById('tituloService').value = '';
-    showServicesList();
-    saveToFirebaseServices();
-    editService(newService.id);
+function crearService() {
+  // 1. Verificar si el usuario tiene permiso general para crear servicios
+  if (!currentUser.permisos.services) {
+    alert("No tienes permiso para crear servicios.");
+    return;
   }
-  function editService(serviceId){
-    const serv = services.find(s => s.id === serviceId);
-    if(!serv) return;
-    if(serv.title === 'Matrícula'){
-      alert('No se puede editar el servicio "Matrícula"');
-      return;
-    }
-    editingServiceId = serviceId;
-    openTabServices('ServicesVariants');
-    document.getElementById('tabServicesVariants').style.display = 'block';
-    document.getElementById('currentServiceTitle').textContent = serv.title;
-    clearVariantForm();
-    renderVariantsTable(serv.variants);
+
+  // 2. (Opcional) Verificar también si deseas que SÍ o SÍ tenga permisos 
+  //    de 'servicesVariants' para poder crear el servicio.
+  if (!currentUser.permisos.servicesVariants) {
+    alert("No tienes permiso para el creador de variantes, no se creará el servicio.");
+    return; 
   }
+
+  // 3. Si pasa las validaciones, ahora sí se crea
+  const title = document.getElementById('tituloService').value.trim();
+  if (!title) {
+    alert('Ingresa un título para el servicio');
+    return;
+  }
+  if (title === 'Matrícula') {
+    alert('Ya existe "Matrícula"');
+    return;
+  }
+
+  const newService = {
+    id: nextServiceId++,
+    title,
+    variants: [],
+    children: []
+  };
+  services.push(newService);
+
+  document.getElementById('tituloService').value = '';
+  showServicesList();
+  saveToFirebaseServices();
+
+  // 4. Finalmente, abrimos la pestaña de Variantes
+  //    (ya sabemos que sí tiene permiso)
+  editService(newService.id);
+}
+
+function editService(serviceId) {
+  const serv = services.find(s => s.id === serviceId);
+  if (!serv) return;
+
+  // Verificar permiso "servicesVariants" (o el que quieras).
+  if (!currentUser.permisos.servicesVariants) {
+    alert("No tienes permiso para editar variantes de un servicio.");
+    return; 
+  }
+
+  // Si SÍ tiene permiso, seguimos
+  editingServiceId = serviceId;
+  openTabServices('ServicesVariants'); // Aquí sí se abrirá la pestaña
+  document.getElementById('currentServiceTitle').textContent = serv.title;
+  clearVariantForm();
+  renderVariantsTable(serv.variants);
+}
   function deleteService(serviceId){
     if(!confirm('¿Seguro de eliminar este servicio?')) return;
     services = services.filter(s => s.id !== serviceId);
@@ -2294,26 +2360,47 @@ window.chartEgresosLineal = new Chart(ctxLinealEgresos, {
   options: { responsive: true, maintainAspectRatio: false }
 });
 
-
-  // Función para cambiar de pestaña en Finanzas
-  function openTabFinanzas(tabName){
-    document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
-    document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
-    document.getElementById('contentFinanzasIngresos').classList.remove('activeTabContent');
-    document.getElementById('tabFinanzasTotal').classList.remove('activeTab');
-    document.getElementById('tabFinanzasEgresos').classList.remove('activeTab');
-    document.getElementById('tabFinanzasIngresos').classList.remove('activeTab');
-    if(tabName === 'Total'){
-      document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
-      document.getElementById('tabFinanzasTotal').classList.add('activeTab');
-    } else if(tabName === 'Egresos'){
-      document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
-      document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
-    } else if(tabName === 'Ingresos'){
-      document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
-      document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
+function openTabFinanzas(tabName) {
+  // 1) Validar permisos
+  if (tabName === 'Total') {
+    if (!currentUser.permisos.finanzasTotal) {
+      alert("No tienes permiso para 'Finanzas - Total Mensual'.");
+      return;
+    }
+  } else if (tabName === 'Egresos') {
+    if (!currentUser.permisos.finanzasEgresos) {
+      alert("No tienes permiso para 'Finanzas - Egresos'.");
+      return;
+    }
+  } else if (tabName === 'Ingresos') {
+    if (!currentUser.permisos.finanzasIngresos) {
+      alert("No tienes permiso para 'Finanzas - Ingresos'.");
+      return;
     }
   }
+
+  // 2) Quitar las clases de todas las pestañas de Finanzas
+  document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
+  document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
+  document.getElementById('contentFinanzasIngresos').classList.remove('activeTabContent');
+  document.getElementById('tabFinanzasTotal').classList.remove('activeTab');
+  document.getElementById('tabFinanzasEgresos').classList.remove('activeTab');
+  document.getElementById('tabFinanzasIngresos').classList.remove('activeTab');
+
+  // 3) Activar la pestaña correcta
+  if (tabName === 'Total') {
+    document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
+    document.getElementById('tabFinanzasTotal').classList.add('activeTab');
+  } else if (tabName === 'Egresos') {
+    document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
+    document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
+  } else if (tabName === 'Ingresos') {
+    document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
+    document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
+  }
+}
+
+
 
   /**************************************************************
    * FICHA INFORMATIVA (Ya existente)
@@ -2350,6 +2437,14 @@ window.chartEgresosLineal = new Chart(ctxLinealEgresos, {
       btnBack.textContent = 'Regresar';
       btnBack.onclick = goBackFicha;
       cont.appendChild(btnBack);
+// Botón para descargar Word
+const btnDescargarWord = document.createElement('button');
+btnDescargarWord.className = 'finish-btn';
+btnDescargarWord.style.marginLeft = '10px';
+btnDescargarWord.textContent = 'Descargar Word';
+btnDescargarWord.onclick = () => descargarFichaWord(ch);
+cont.appendChild(btnDescargarWord);
+
     } else {
       createFichaForm(ch, cont);
     }
@@ -2721,12 +2816,162 @@ async function goToUsers(){
   showUsersList();
   openTabUsers('UsersMain');
 }
+function descargarFichaWord(ch) {
+  const year = new Date().getFullYear();
+  const fileName = `Ficha Informativa_${year}_${ch.name}_${ch.lastname}.doc`;
+  const f = ch.ficha || {};
 
-async function saveUserToFirebase(userObj){
-  // userObj.username es la key
-  const docRef = doc(db, "users", userObj.username);
-  await setDoc(docRef, userObj, { merge: true });
+  // Construimos el contenido con TODAS las secciones de la ficha
+  const contentHtml = `
+    <h1 style="text-align:center;">Ficha Informativa</h1>
+    <h2 style="text-align:center;">${ch.lastname} ${ch.name} - Año: ${year}</h2>
+    <hr>
+
+    <!-- Definimos el estilo para evitar cortes de página internos -->
+    <style>
+      .avoid-page-break {
+        page-break-inside: avoid;
+      }
+    </style>
+
+    <!-- Sección 1: Datos del Niño -->
+    <div class="avoid-page-break">
+      <h3>Sección 1: Datos del Niño</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>DNI</strong></td><td>${f.dni || ''}</td></tr>
+        <tr><td><strong>Nombres y Apellidos</strong></td><td>${f.nomApeNino || ''}</td></tr>
+        <tr><td><strong>Fecha de Nacimiento</strong></td><td>${f.fechaNacNino || ''}</td></tr>
+        <tr><td><strong>Lugar de Nacimiento</strong></td><td>${f.lugarNacNino || ''}</td></tr>
+        <tr><td><strong>Edad</strong></td><td>${f.edadNino || ''}</td></tr>
+        <tr><td><strong>Sexo</strong></td><td>${f.sexoNino || ''}</td></tr>
+        <tr><td><strong>Religión</strong></td><td>${f.religionNino || ''}</td></tr>
+        <tr><td><strong>Tipo de Parto</strong></td><td>${f.tipoParto || ''}</td></tr>
+        <tr><td><strong>Dirección</strong></td><td>${f.direccionNino || ''}</td></tr>
+        <tr><td><strong>Nro. de Hermanos</strong></td><td>${f.nroHermanos || ''}</td></tr>
+        <tr><td><strong>Tel. Principal</strong></td><td>${f.telPrincipal || ''}</td></tr>
+        <tr><td><strong>Tel. Emergencia</strong></td><td>${f.telEmergencia || ''}</td></tr>
+        <tr><td><strong>Centro Médico</strong></td><td>${f.centroMedico || ''}</td></tr>
+        <tr><td><strong>Número de Seguro</strong></td><td>${f.numSeguro || ''}</td></tr>
+        <tr><td><strong>Tipo de Seguro</strong></td><td>${f.tipoSeguro || ''}</td></tr>
+        <tr><td><strong>¿Con quién vive?</strong></td><td>${f.conQuienVive || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+
+    <!-- Sección 2: Datos del Padre -->
+    <div class="avoid-page-break">
+      <h3>Sección 2: Datos del Padre</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>Apellidos y Nombres</strong></td><td>${f.apellidosPadre || ''}</td></tr>
+        <tr><td><strong>DNI</strong></td><td>${f.dniPadre || ''}</td></tr>
+        <tr><td><strong>Fecha Nac.</strong></td><td>${f.fechaNacPadre || ''}</td></tr>
+        <tr><td><strong>Religión</strong></td><td>${f.religionPadre || ''}</td></tr>
+        <tr><td><strong>Estado Civil</strong></td><td>${f.estadoCivilPadre || ''}</td></tr>
+        <tr><td><strong>Grado Instrucción</strong></td><td>${f.gradoInstrPadre || ''}</td></tr>
+        <tr><td><strong>Ocupación</strong></td><td>${f.ocupPadre || ''}</td></tr>
+        <tr><td><strong>Teléfono</strong></td><td>${f.telPadre || ''}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${f.emailPadre || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+    <p style="text-align:center;"><em>‎‎‎‎‎‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎</em></p>
+    <!-- Sección 3: Datos de la Madre -->
+    <div class="avoid-page-break">
+      <h3>Sección 3: Datos de la Madre</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>Apellidos y Nombres</strong></td><td>${f.apellidosMadre || ''}</td></tr>
+        <tr><td><strong>DNI</strong></td><td>${f.dniMadre || ''}</td></tr>
+        <tr><td><strong>Fecha Nac.</strong></td><td>${f.fechaNacMadre || ''}</td></tr>
+        <tr><td><strong>Religión</strong></td><td>${f.religionMadre || ''}</td></tr>
+        <tr><td><strong>Estado Civil</strong></td><td>${f.estadoCivilMadre || ''}</td></tr>
+        <tr><td><strong>Grado Instrucción</strong></td><td>${f.gradoInstrMadre || ''}</td></tr>
+        <tr><td><strong>Ocupación</strong></td><td>${f.ocupMadre || ''}</td></tr>
+        <tr><td><strong>Teléfono</strong></td><td>${f.telMadre || ''}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${f.emailMadre || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+
+    <!-- Sección 4: Datos del Apoderado -->
+    <div class="avoid-page-break">
+      <h3>Sección 4: Datos del Apoderado</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>Apellidos y Nombres</strong></td><td>${f.apellidosApod || ''}</td></tr>
+        <tr><td><strong>DNI</strong></td><td>${f.dniApod || ''}</td></tr>
+        <tr><td><strong>Fecha Nac.</strong></td><td>${f.fechaNacApod || ''}</td></tr>
+        <tr><td><strong>Religión</strong></td><td>${f.religionApod || ''}</td></tr>
+        <tr><td><strong>Estado Civil</strong></td><td>${f.estadoCivilApod || ''}</td></tr>
+        <tr><td><strong>Grado Instrucción</strong></td><td>${f.gradoInstrApod || ''}</td></tr>
+        <tr><td><strong>Ocupación</strong></td><td>${f.ocupApod || ''}</td></tr>
+        <tr><td><strong>Teléfono</strong></td><td>${f.telApod || ''}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${f.emailApod || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+
+    <!-- Sección 5: Desarrollo -->
+    <div class="avoid-page-break">
+      <h3>Sección 5: Desarrollo</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>Complicaciones Parto</strong></td><td>${f.complicParto || ''}</td></tr>
+        <tr><td><strong>Desarrollo Motriz</strong></td><td>${f.desarrolloMotriz || ''}</td></tr>
+        <tr><td><strong>Levanta Cabeza</strong></td><td>${f.levantaCabeza || ''}</td></tr>
+        <tr><td><strong>Se Sienta</strong></td><td>${f.seSienta || ''}</td></tr>
+        <tr><td><strong>Gatea</strong></td><td>${f.gatea || ''}</td></tr>
+        <tr><td><strong>Se Para</strong></td><td>${f.sePara || ''}</td></tr>
+        <tr><td><strong>Camina</strong></td><td>${f.camina || ''}</td></tr>
+        <tr><td><strong>Controla Esfínteres</strong></td><td>${f.controlaEsfinteres || ''}</td></tr>
+        <tr><td><strong>Primeras Palabras</strong></td><td>${f.primerasPalabras || ''}</td></tr>
+        <tr><td><strong>Habla con Fluidez</strong></td><td>${f.hablaFluidez || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+    <p style="text-align:center;"><em>‎‎‎‎‎‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎‎ ‎ ‎ ‎</em></p>
+    <!-- Sección 6: Salud -->
+    <div class="avoid-page-break">
+      <h3>Sección 6: Salud</h3>
+      <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr><td><strong>Enfermedades</strong></td><td>${f.enfermedades || ''}</td></tr>
+        <tr><td><strong>Alergias</strong></td><td>${f.alergias || ''}</td></tr>
+        <tr><td><strong>Vacuna Varicela</strong></td><td>${f.vacunaVaricela || ''}</td></tr>
+        <tr><td><strong>Vacuna Sarampión</strong></td><td>${f.vacunaSarampion || ''}</td></tr>
+        <tr><td><strong>Vacuna COVID</strong></td><td>${f.vacunaCOVID || ''}</td></tr>
+        <tr><td><strong>Tipo de Sangre</strong></td><td>${f.tipoSangre || ''}</td></tr>
+      </table>
+    </div>
+    <br>
+
+
+  `;
+
+  // Armamos el HTML final:
+  const preHtml = `
+    <html>
+    <head>
+      <meta charset="UTF-8"/>
+      <title>Ficha Informativa</title>
+    </head>
+    <body style="font-family:Arial, sans-serif; line-height:1.4; margin:20px;">
+  `;
+  const postHtml = `</body></html>`;
+  const fullHtml = preHtml + contentHtml + postHtml;
+
+  // Creamos un Blob con type "application/msword"
+  const blob = new Blob([fullHtml], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+
+  // Forzamos la descarga
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Liberamos el URL blob
+  URL.revokeObjectURL(url);
 }
+
 function showUsersList(){
   const container = document.getElementById('usersList');
   container.innerHTML = '';
@@ -2847,21 +3092,36 @@ async function guardarPermisosUsuario(){
   openTabUsers('UsersMain');
   showUsersList();
 }
-function openTabUsers(tabName){
+function openTabUsers(tabName) {
+  // 1) Dependiendo de la lógica, quizá solo el superadmin “renatozepi” puede acceder:
+  if (tabName === 'UsersMain') {
+    if (currentUser.username !== "renatozepi") {
+      alert("No tienes permiso para ver la lista de usuarios.");
+      return;
+    }
+  } else if (tabName === 'EditUser') {
+    if (currentUser.username !== "renatozepi") {
+      alert("No tienes permiso para editar usuarios.");
+      return;
+    }
+  }
+
+  // 2) Quitar clases
   document.getElementById('contentUsersMain').classList.remove('activeTabContent');
   document.getElementById('contentEditUser').classList.remove('activeTabContent');
   document.getElementById('tabUsersMain').classList.remove('activeTab');
   document.getElementById('tabEditUser').classList.remove('activeTab');
 
-  if(tabName === 'UsersMain'){
+  // 3) Activar la pestaña solicitada
+  if (tabName === 'UsersMain') {
     document.getElementById('contentUsersMain').classList.add('activeTabContent');
     document.getElementById('tabUsersMain').classList.add('activeTab');
-  } else {
+  } else if (tabName === 'EditUser') {
     document.getElementById('contentEditUser').classList.add('activeTabContent');
-    document.getElementById('tabEditUser').style.display = 'block';
     document.getElementById('tabEditUser').classList.add('activeTab');
   }
 }
+
 
 
   /**************************************************************
