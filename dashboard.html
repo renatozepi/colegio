@@ -3021,6 +3021,11 @@ async function deleteUser(username) {
     alert("Error al eliminar usuario");
   }
 }
+async function saveUserToFirebase(userObj) {
+  // userObj es un objeto con { username, password, permisos: {...} }
+  const docRef = doc(db, "users", userObj.username);
+  await setDoc(docRef, userObj, { merge: true });
+}
 async function crearUser(){
   const userName = document.getElementById('newUserName').value.trim();
   const userPass = document.getElementById('newUserPass').value;
@@ -3158,7 +3163,6 @@ function openTabUsers(tabName) {
     window.crearUser = crearUser;
     window.guardarPermisosUsuario = guardarPermisosUsuario
     window.logout = logout
-    window.saveUserToFirebase = saveUserToFirebase
   });
 </script>
 </body>
