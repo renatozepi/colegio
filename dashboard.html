@@ -866,7 +866,8 @@
     setDoc,
     collection,
     getDocs,
-    deleteDoc
+    deleteDoc,
+    onSnapshot
   } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -965,18 +966,20 @@ async function goToMatriculas(){
     screenStack.push("matriculas");
     await initMatriculas();
   }
-async function goToFinanzas(){
-  if(!currentUser || !currentUser.permisos.finanzas){
+async function goToFinanzas() {
+  if (!currentUser || !currentUser.permisos.finanzas) {
     alert("No tienes permiso para acceder a Finanzas.");
     return;
   }
   document.getElementById('landingPage').classList.add('hidden');
   document.getElementById('finanzasContainer').classList.add('activeContainer');
   screenStack.push("finanzas");
-  // Cargar la información de servicios para que los ingresos se calculen correctamente
+
   await loadFromFirebaseServices();
-  // Inicializar Finanzas (que a su vez llama a renderFinanzas y actualiza los gráficos)
   await initFinanzas();
+
+  // Suscripción en tiempo real
+  initFinanzasRealTime();
 }
 function goBack() {
   screenStack.pop(); 
@@ -2054,7 +2057,7 @@ function renderFinanzas(){
   document.getElementById('ingresosBrutosTotales').textContent = "S/ " + brutoTotales.toFixed(2);
   document.getElementById('ingresosNetosTotales').textContent = "S/ " + netoTotales.toFixed(2);
   // También podrías asignar ingresosEsperados e ingresosNetos según tu lógica
-  document.getElementById('ingresosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosBruto').textContent = "S/ " + brutoEsperado.toFixed(2);
   document.getElementById('ingresosNetos').textContent = "S/ " + netoTotales.toFixed(2);
 
   // Si deseas actualizar un indicador de variación, por ejemplo:
@@ -2379,6 +2382,7 @@ function openTabFinanzas(tabName) {
     }
   }
 
+
   // 2) Quitar las clases de todas las pestañas de Finanzas
   document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
   document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
@@ -2400,7 +2404,16 @@ function openTabFinanzas(tabName) {
   }
 }
 
-
+function initFinanzasRealTime() {
+  const docRef = doc(db, "data", "finanzas");
+  onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      finanzasData = docSnap.data();
+      // cada vez que hay un cambio, re-renderizas la parte de finanzas
+      renderFinanzas();
+    }
+  });
+}
 
   /**************************************************************
    * FICHA INFORMATIVA (Ya existente)
