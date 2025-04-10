@@ -728,7 +728,18 @@
   </div>
   <div class="tab-content" id="contentFinanzasEgresos">
     <h2>Administrador de Finanzas - Egresos</h2>
+    <!-- Gráficos para egresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartEgresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartEgresosCircular"></canvas>
+      </div>
+    </div>
+
 <div class="finanzas-form" style="margin-bottom:10px;">
+
   <!-- Filtro de Egresos -->
   <label>Filtrar Tipo:</label>
   <select id="filtroEgresosTipo"></select>
@@ -774,19 +785,19 @@
         <!-- Filas generadas dinámicamente -->
       </tbody>
     </table>
-    <!-- Gráficos para egresos -->
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
-      <div class="chart-container">
-        <canvas id="chartEgresosLineal"></canvas>
-      </div>
-      <div class="chart-container">
-        <canvas id="chartEgresosCircular"></canvas>
-      </div>
-    </div>
   </div>
 <div class="tab-content" id="contentFinanzasIngresos">
   <h2>Administrador de Finanzas - Ingresos</h2>
-  <!-- NUEVA SECCIÓN DE FILTROS PARA INGRESOS -->
+<!-- NUEVA SECCIÓN DE FILTROS PARA INGRESOS -->
+    <!-- Gráficos para ingresos -->
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+      <div class="chart-container">
+        <canvas id="chartIngresosLineal"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartIngresosCircular"></canvas>
+      </div>
+    </div>
   <div class="finanzas-form" style="margin-bottom:10px;">
     <label>Filtrar Tipo:</label>
     <select id="filtroIngresosTipo"></select>
@@ -821,15 +832,7 @@
         <!-- Filas generadas dinámicamente -->
       </tbody>
     </table>
-    <!-- Gráficos para ingresos -->
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
-      <div class="chart-container">
-        <canvas id="chartIngresosLineal"></canvas>
-      </div>
-      <div class="chart-container">
-        <canvas id="chartIngresosCircular"></canvas>
-      </div>
-    </div>
+
   </div>
 </div>
 <!-- =================== CONTENEDOR USERS =================== -->
