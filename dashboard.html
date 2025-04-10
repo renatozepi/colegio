@@ -588,38 +588,42 @@
       <button onclick="doneVariants()">Listo</button>
     </div>
   </div>
-  <div class="tab-content" id="contentServicesChildren">
-    <h2>Administrar Niños</h2>
-    <p id="currentServiceTitleChild" style="font-weight:600; color:#4a90e2;"></p>
-    <div class="form-section">
-      <label>Nombre:</label>
-      <input type="text" id="childName" placeholder="Ej: JUAN" />
-      <label>Apellidos:</label>
-      <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
-      <label>Fecha Ingreso:</label>
-      <input type="date" id="childDate" />
-      <label id="labelVariantChild">Variante:</label>
-      <select id="childVariantSelect">
-        <!-- Llenado dinámico -->
-      </select>
-      <button onclick="agregarOguardarChild()" id="btnChildPrincipal">Agregar Niño</button>
-    </div>
-    <table class="children-table">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Apellidos</th>
-          <th>Fecha</th>
-          <th>Variante</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyChildren"></tbody>
-    </table>
-    <div class="actions">
-      <button onclick="doneChildren()">Listo</button>
-    </div>
+<div class="tab-content" id="contentServicesChildren">
+  <h2>Administrar Niños</h2>
+  <p id="currentServiceTitleChild" style="font-weight:600; color:#4a90e2;"></p>
+  <div class="form-section">
+    <label>Nombre:</label>
+    <input type="text" id="childName" placeholder="Ej: JUAN" />
+    <label>Apellidos:</label>
+    <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
+    <label>Fecha Ingreso:</label>
+    <input type="date" id="childDate" />
+    <label id="labelVariantChild">Variante:</label>
+    <select id="childVariantSelect">
+      <!-- Llenado dinámico -->
+    </select>
+    <button onclick="agregarOguardarChild()" id="btnChildPrincipal">Agregar Niño</button>
   </div>
+  <table class="children-table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Apellidos</th>
+        <th>Fecha</th>
+        <th>Variante</th>
+        <!-- Aquí agregamos las nuevas columnas: -->
+        <th>Pagó Pensión</th>
+        <th>Pensiones Atrasadas</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="tbodyChildren"></tbody>
+  </table>
+  <div class="actions">
+    <button onclick="doneChildren()">Listo</button>
+  </div>
+</div>
+
 </div>
 
 <!-- =================== CONTENEDOR MATRÍCULAS =================== -->
@@ -1074,6 +1078,7 @@ function calcularIngresosBrutosTotales(mesSeleccionado) {
   });
   return total;
 }
+
 function calcularIngresosNetosTotales(mesSeleccionado) {
   const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
   const totalEgresos = calcularEgresosTotales(
@@ -1858,29 +1863,75 @@ function editService(serviceId) {
     document.getElementById('childDate').value = '';
     document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
   }
-  function renderChildrenTable(arr){
-    const tbody = document.getElementById('tbodyChildren');
-    tbody.innerHTML = '';
-    const serv = services.find(s => s.id === editingServiceId);
-    arr.forEach(ch => {
-      const row = tbody.insertRow();
-      row.insertCell(0).textContent = ch.name;
-      row.insertCell(1).textContent = ch.lastname;
-      row.insertCell(2).textContent = ch.date;
-      const variant = serv.variants.find(v => v.id === ch.variantId);
-      row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
-      const accCell = row.insertCell(4);
-      const btnEd = document.createElement('button');
-      btnEd.textContent = '✎';
-      btnEd.onclick = () => editServiceChild(ch.id);
-      accCell.appendChild(btnEd);
-      const btnDel = document.createElement('button');
-      btnDel.textContent = '🗑️';
-      btnDel.style.marginLeft = '5px';
-      btnDel.onclick = () => deleteServiceChild(ch.id);
-      accCell.appendChild(btnDel);
-    });
-  }
+function renderChildrenTable(arr) {
+  const tbody = document.getElementById('tbodyChildren');
+  tbody.innerHTML = '';
+  const serv = services.find(s => s.id === editingServiceId);
+  if (!serv) return;
+
+  arr.forEach(ch => {
+    const row = tbody.insertRow();
+
+    // Columna 1: Nombre
+    row.insertCell(0).textContent = ch.name;
+
+    // Columna 2: Apellidos
+    row.insertCell(1).textContent = ch.lastname;
+
+    // Columna 3: Fecha
+    row.insertCell(2).textContent = ch.date;
+
+    // Columna 4: Variante
+    const variant = serv.variants.find(v => v.id === ch.variantId);
+    row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
+
+    // Columna 5: Pagó Pensión (botón tipo Sí / No)
+    const cellPension = row.insertCell(4);
+    const btnP = document.createElement('button');
+    btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+    btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+    btnP.style.color = '#fff';
+    btnP.style.border = 'none';
+    btnP.style.borderRadius = '6px';
+    btnP.style.padding = '6px 10px';
+    btnP.onclick = () => {
+      // Toggle
+      ch.pagoPension = !ch.pagoPension;
+      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
+      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
+      // Guardamos cambios en Firebase
+      saveToFirebaseServices();
+    };
+    cellPension.appendChild(btnP);
+
+    // Columna 6: Pensiones Atrasadas (input type="number")
+    const cellAtrasos = row.insertCell(5);
+    const inputA = document.createElement('input');
+    inputA.type = 'number';
+    inputA.style.width = '60px';
+    inputA.value = ch.pensionesAtrasadas || 0;
+    inputA.onchange = () => {
+      // Convertir a número y asignar
+      ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+      saveToFirebaseServices();
+    };
+    cellAtrasos.appendChild(inputA);
+
+    // Columna 7: Acciones (editar, eliminar, etc.)
+    const accCell = row.insertCell(6);
+    const btnEd = document.createElement('button');
+    btnEd.textContent = '✎';
+    btnEd.onclick = () => editServiceChild(ch.id);
+    accCell.appendChild(btnEd);
+
+    const btnDel = document.createElement('button');
+    btnDel.textContent = '🗑️';
+    btnDel.style.marginLeft = '5px';
+    btnDel.onclick = () => deleteServiceChild(ch.id);
+    accCell.appendChild(btnDel);
+  });
+}
+
   function agregarOguardarChild(){
     if(!editingServiceId){
       alert('No hay servicio seleccionado');
