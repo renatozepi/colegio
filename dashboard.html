@@ -1007,7 +1007,8 @@ async function goToFinanzas() {
   await initFinanzas();
 
   // Suscripción en tiempo real
-  initFinanzasRealTime();
+initFinanzasRealTime();
+initServicesRealTime();
 }
 function goBack() {
   screenStack.pop(); 
@@ -2551,6 +2552,25 @@ function initFinanzasRealTime() {
     }
   });
 }
+  // Suscripción en tiempo real para Services
+function initServicesRealTime() {
+  const docRef = doc(db, "data", "servicesData");
+  onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const parsed = docSnap.data();
+      services = parsed.services || [];
+      nextServiceId      = parsed.nextServiceId      || nextServiceId;
+      nextVariantId      = parsed.nextVariantId      || nextVariantId;
+      nextServiceChildId = parsed.nextServiceChildId || nextServiceChildId;
+      // Si estás en la vista de Finanzas, refresca ahí también
+      if (screenStack[screenStack.length - 1] === "finanzas") {
+        renderFinanzas();
+        actualizarGraficosFinanzas();
+      }
+    }
+  });
+}
+
 
   /**************************************************************
    * FICHA INFORMATIVA (Ya existente)
