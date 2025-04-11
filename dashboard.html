@@ -2334,7 +2334,7 @@ function actualizarGraficosFinanzas(){
 const mesSeleccionado = document.getElementById('finanzasMes').value;
 const ingresosBrutosTotales = calcularIngresosBrutosTotales(mesSeleccionado);
 const ingresosNetosEsperados = calcularIngresosNetoEsperado(mesSeleccionado);
-const faltante = Math.max(ingresosNetosEsperados - ingresosNetosTotales, 0);
+const faltante = Math.max(ingresosNetosEsperados - ingresosBrutosTotales, 0);
 
 const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
 if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
