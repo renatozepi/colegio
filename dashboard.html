@@ -2332,7 +2332,7 @@ function renderTablaIngresos(mesSeleccionado) {
 function actualizarGraficosFinanzas(){
 // Obtener datos para Total Mensual
 const mesSeleccionado = document.getElementById('finanzasMes').value;
-const ingresosBrutosTotales = calcularIngresosNetosTotales(mesSeleccionado);
+const ingresosBrutosTotales = calcularIngresosBrutosTotales(mesSeleccionado);
 const ingresosNetosEsperados = calcularIngresosNetoEsperado(mesSeleccionado);
 const faltante = Math.max(ingresosNetosEsperados - ingresosNetosTotales, 0);
 
