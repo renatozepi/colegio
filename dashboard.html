@@ -2330,30 +2330,34 @@ function renderTablaIngresos(mesSeleccionado) {
 
   // Funciones para actualizar gráficos (placeholders)
 function actualizarGraficosFinanzas(){
-// Obtener datos para Total Mensual
-const mesSeleccionado = document.getElementById('finanzasMes').value;
-const ingresosBrutosTotales = calcularIngresosBrutosTotales(mesSeleccionado);
-const ingresosNetosEsperados = calcularIngresosNetoEsperado(mesSeleccionado);
-const faltante = Math.max(ingresosNetosEsperados - ingresosBrutosTotales, 0);
+  const mesSeleccionado = document.getElementById('finanzasMes').value;
 
-const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
-if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
-  window.chartFinanzasCircular.destroy();
-}
-window.chartFinanzasCircular = new Chart(ctxPastel, {
-  type: 'pie',
-  data: {
-    labels: ['Pagado', 'Falta'],
-    datasets: [{
-      data: [ingresosNetosTotales, faltante],
-      backgroundColor: ['#3BB273', '#E74C3C']
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false
+  // Calculamos ingresos brutos esperados y totales
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const brutoTotales  = calcularIngresosBrutosTotales(mesSeleccionado);
+
+  // Calculamos cuánto falta por cobrar del bruto esperado
+  const faltante = Math.max(brutoEsperado - brutoTotales, 0);
+
+  // *** Gráfico circular del Total Mensual ***
+  const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
+  if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
+    window.chartFinanzasCircular.destroy();
   }
-});
+  window.chartFinanzasCircular = new Chart(ctxPastel, {
+    type: 'pie',
+    data: {
+      labels: ['Pagado', 'Falta'],
+      datasets: [{
+        data: [brutoTotales, faltante],
+        backgroundColor: ['#3BB273', '#E74C3C']  // verde y rojo
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
 const totalFijos = calcularEgresosTipo(
   finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
   "Fijo"
