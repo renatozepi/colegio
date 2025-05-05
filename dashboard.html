@@ -247,8 +247,180 @@
     #servicesContainer .children-table td {
       border: 1px solid #ddd; padding: 8px; text-align: left;
     }
+ /* ========= Services › Administrar Niños ========= */
+
+/* --- Cabecera selector de mes (ya existe .finanzas-header) --- */
+#contentServicesChildren .finanzas-header{
+  justify-content:flex-end;
+  background:#f9fbff;
+  border:1px solid #e0e6f0;
+  border-radius:8px;
+  padding:12px 18px;
+  margin-bottom:18px;
+}
+#contentServicesChildren .finanzas-header label{
+  font-weight:600;
+  color:#1a2e55;
+}
+
+/* --- Formulario principal ---------------------------------- */
+#contentServicesChildren .form-section{
+  display:grid;
+  grid-template-columns: 120px 1fr 130px 1fr; /* etiqueta‑campo, etiqueta‑campo */
+  gap:14px 22px;                              /* fila / columna                */
+  align-items:center;
+  background:#f9fbff;
+  border:1px solid #e0e6f0;
+  border-radius:8px;
+  padding:20px 24px 14px;
+  box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+
+#contentServicesChildren .form-section label{
+  justify-self:end;           /* etiquetas a la derecha de la celda */
+  font-weight:600;
+  color:#1a2e55;
+}
+
+#contentServicesChildren .form-section input,
+#contentServicesChildren .form-section select{
+  width:100%;
+  padding:8px 12px;
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  background:#fff;
+  font-size:.95rem;
+}
+
+/* Botón Agregar / Guardar Niño ocupa la fila completa */
+#contentServicesChildren #btnChildPrincipal{
+  grid-column:1 / -1;         /* de la 1ª a la última columna */
+  justify-self:start;
+  margin-top:8px;
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:10px 26px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#contentServicesChildren #btnChildPrincipal:hover{
+  background:#1a2e55;
+}
+
+/* --- Buscador ------------------------------------------------ */
+#contentServicesChildren .children-search{
+  margin:22px 0 14px;
+  display:flex;
+  gap:10px;
+}
+
+#contentServicesChildren .children-search input{
+  flex:1;
+  padding:10px 14px;
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  font-size:.95rem;
+}
+
+#contentServicesChildren .children-search button{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:10px 22px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#contentServicesChildren .children-search button:hover{
+  background:#1a2e55;
+}
+
+/* --- Tabla de niños ----------------------------------------- */
+#contentServicesChildren .children-table thead{
+  background:#f1c40f;
+  color:#1a2e55;
+}
+#contentServicesChildren .children-table td,
+#contentServicesChildren .children-table th{
+  font-size:.9rem;
+}
+
 
     /* =================== ESTILOS MATRÍCULAS =================== */
+/* ========= Matrículas › cabecera de filtros ========= */
+/* ===== Matrículas › barra de búsqueda ===== */
+#matriculasContainer .matriculas-search{
+  margin:22px 0 14px;
+  display:flex;
+  gap:10px;
+  max-width:600px; 
+}
+#matriculasContainer .matriculas-search input{
+  padding:10px 14px;
+  flex:0 1 360px; 
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  font-size:.95rem;
+}
+#matriculasContainer .matriculas-search button{
+  background:#4a90e2;
+  flex:0 0 auto; 
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:10px 22px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#matriculasContainer .matriculas-search button:hover{
+  background:#1a2e55;
+}
+
+#matriculasContainer .matriculas-header{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 18px;                /* fila / columna */
+  align-items:center;
+  background:#f9fbff;
+  border:1px solid #e0e6f0;
+  border-radius:8px;
+  padding:12px 18px;
+  margin-bottom:18px;
+}
+
+#matriculasContainer .matriculas-header label{
+  font-weight:600;
+  color:#1a2e55;
+}
+
+#matriculasContainer .matriculas-header select{
+  padding:6px 10px;
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  background:#fff;
+  font-size:.95rem;
+  min-width:120px;
+}
+
+.matriculas-btn{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:8px 22px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+.matriculas-btn:hover{
+  background:#1a2e55;
+}
+
     #matriculasContainer .tabs-bar {
       background-color: #1a2e55;
       border-radius: 6px 6px 0 0;
@@ -454,6 +626,10 @@
       width: 100%;
       max-width: 400px;
       margin: 0 auto 20px;
+.ficha-btn,
+.pension-btn{
+  color:#fff !important;     /* texto siempre blanco */
+}
     }
   </style>
 </head>
@@ -591,6 +767,10 @@
 <div class="tab-content" id="contentServicesChildren">
   <h2>Administrar Niños</h2>
   <p id="currentServiceTitleChild" style="font-weight:600; color:#4a90e2;"></p>
+<div class="finanzas-header">
+  <label for="servicesMes">Mes:</label>
+  <select id="servicesMes" onchange="cambiarMesServices()"></select>
+</div>
   <div class="form-section">
     <label>Nombre:</label>
     <input type="text" id="childName" placeholder="Ej: JUAN" />
@@ -604,6 +784,15 @@
     </select>
     <button onclick="agregarOguardarChild()" id="btnChildPrincipal">Agregar Niño</button>
   </div>
+  <!-- dentro de contentServicesChildren, antes de <table class="children-table"> -->
+<div class="children-search">
+  <input
+    type="text"
+    id="childrenSearch"
+    placeholder="Buscar por nombre o apellido…"
+    oninput="if(event.key==='Enter') filterChildren()" />
+  <button onclick="filterChildren()">Buscar</button>
+</div>
   <table class="children-table">
     <thead>
       <tr>
@@ -630,7 +819,9 @@
 <div class="app-container" id="matriculasContainer">
   <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
   <div class="tabs-bar">Administrador de Matrículas</div>
-  <div class="filter-section">
+  <div class="matriculas-header">
+<label>Mes:</label>
+<select id="filtroMesMatriculas" onchange="cambiarMesMatriculas()"></select>
     <label>Año:</label>
     <select id="filtroAno">
       <option value="">(Todos)</option>
@@ -648,6 +839,16 @@
     </select>
     <button onclick="filtrarMatriculas()">Aplicar Filtro</button>
   </div>
+<div class="matriculas-search">
+<input
+  type="text"
+  id="matriculasSearch"
+  placeholder="Buscar por nombre o apellido…"
+  onkeyup="if(event.key==='Enter') filterMatriculasBySearch()" />  <!-- ← cierre -->
+<button onclick="filterMatriculasBySearch()">Buscar</button>
+</div>
+
+
   <table class="matriculas-list-table">
     <thead>
       <tr>
@@ -885,7 +1086,7 @@
 </div>
 
 <!-- Coloca esto al inicio del bloque de <script> en tu dashboard -->
-<script type="module">
+<script type="module" defer>
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
   import {
     getFirestore,
@@ -927,6 +1128,8 @@ if (!currentUser.username) {
    * Global Variables and Screen Navigation
    *************************************************************/
   let screenStack = ["landing"];
+  let childrenSearchTerm = '';
+  let matriculasSearchTerm = '';
   let users = [];
   let editingUsername = null;
   let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
@@ -965,7 +1168,8 @@ async function saveFinanzasData() {
     const docRef = doc(db, "data", "finanzas");
     const data = {
       egresos: finanzasData.egresos,
-      subtipos: subtiposEgresos
+      subtipos: subtiposEgresos,
+  resumenMensual: finanzasData.resumenMensual
     };
     await setDoc(docRef, data, { merge: true });
     console.log("Finanzas data saved to Firebase");
@@ -1007,8 +1211,7 @@ async function goToFinanzas() {
   await initFinanzas();
 
   // Suscripción en tiempo real
-initFinanzasRealTime();
-initServicesRealTime();
+  initFinanzasRealTime();
 }
 function goBack() {
   screenStack.pop(); 
@@ -1053,42 +1256,63 @@ function goBack() {
       goBack();
     }
   }
-function calcularIngresosBrutoEsperado(mesSeleccionado) {
-  let total = 0;
-  services.forEach(serv => {
-    serv.children.forEach(child => {
-      if(child.mesRegistro === mesSeleccionado) {
-        total += child.total || 0;
-      }
-    });
-  });
-  return total;
+/* --- Helpers de fechas --- */
+function actualizarResumenMensual(mesKey){
+  finanzasData.resumenMensual[mesKey] = {
+    brutoEsperado  : calcularIngresosBrutoEsperado(mesKey),
+    netoEsperado   : calcularIngresosNetoEsperado(mesKey),
+    brutoTotales   : calcularIngresosBrutosTotales(mesKey),
+    netoTotales    : calcularIngresosNetosTotales(mesKey),
+    egresosTotales : calcularEgresosTotales(
+                       finanzasData.egresos.filter(e =>
+                         `${e.anio}-${String(e.mes).padStart(2,'0')}`===mesKey))
+  };
+  saveFinanzasData();                 // persistir en Firebase
 }
-function calcularIngresosNetoEsperado(mesSeleccionado) {
-  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
-  const totalEgresos = calcularEgresosTotales(
-    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
-  );
-  return brutoEsperado - totalEgresos;
+
+function childIsActiveInMonth(child, mesKey){
+  // child.mesRegistro y mesKey están en formato "YYYY-MM" con mes a 2 dígitos
+  return child.mesRegistro <= mesKey;          // comparación lexicográfica sirve
 }
-function calcularIngresosBrutosTotales(mesSeleccionado) {
+function strToYYYYMM(str){                     // "2025-05" -> 202505
+  return parseInt(str.replace('-',''));
+}
+
+/* --- Ingresos esperados / reales --- */
+function calcularIngresosBrutoEsperado(mesKey){
   let total = 0;
-  services.forEach(serv => {
-    serv.children.forEach(child => {
-      if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
-        total += child.total || 0;
+  services.forEach(serv=>{
+    serv.children.forEach(ch=>{
+      if(childIsActiveInMonth(ch, mesKey)){
+        total += ch.total || 0;                 // precio de su variante
       }
     });
   });
   return total;
 }
 
-function calcularIngresosNetosTotales(mesSeleccionado) {
-  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
-  const totalEgresos = calcularEgresosTotales(
-    finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado)
-  );
-  return brutoTotales - totalEgresos;
+function calcularIngresosBrutosTotales(mes){
+  let total = 0;
+  services.forEach(s=>{
+    s.children.forEach(c=>{
+      if(childIsActiveInMonth(c,mes) && c.pagoPorMes?.[mes]){
+        total += c.total || 0;
+      }
+    });
+  });
+  return total;
+}
+
+function calcularIngresosNetoEsperado(mesKey){
+  return calcularIngresosBrutoEsperado(mesKey) -
+         calcularEgresosTotales(finanzasData.egresos
+           .filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesKey));
+}
+
+function calcularIngresosNetosTotales(mesKey){
+  return calcularIngresosBrutosTotales(mesKey) -
+         calcularEgresosTotales(finanzasData.egresos
+           .filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesKey));
 }
 async function attemptLogin(){
   const username = document.getElementById('loginUsername').value.trim();
@@ -1395,69 +1619,142 @@ function applyPermissionsToMenus() {
     mostrarMacros();
     saveToFirebaseMacros();
   }
-  function generarTxt(){
-    if(!editingMacroId){
-      alert('No hay macro seleccionada.');
-      return;
-    }
-    const mac = macros.find(m => m.id === editingMacroId);
-    if(!mac){
-      alert('Macro no encontrada');
-      return;
-    }
-    generateCount++;
-    const hoy = new Date();
-    const fechaFact = hoy.getFullYear().toString() + String(hoy.getMonth()+1).padStart(2, '0') + String(hoy.getDate()).padStart(2, '0');
-    const ruc = '00018176347';
-    const moneda = 'PEN';
-    const numeroClase = '000';
-    const tipoActu = 'P';
-    let cabecera = '01' + ruc + numeroClase + moneda + fechaFact + '001' + ' '.repeat(7) + tipoActu + ' '.repeat(322) + '\r\n';
-    let contenido = cabecera;
-    const anioSiguiente = hoy.getFullYear() + 1;
-    const fechaBloqueo = `${anioSiguiente}0930`;
-    let contadorRegistros = 0;
-    let sumaMin = 0, sumaMax = 0;
-    mac.alumnos.forEach(item => {
-      const fechaObj = new Date(item.fechaInscripcion);
-      const anio = fechaObj.getFullYear();
-      const mesInicio = fechaObj.getMonth();
-      const diaInscripcion = fechaObj.getDate();
-      for(let m = mesInicio; m < 12; m++){
-        const nombreCompleto = (item.apellidos + ' ' + item.nombre).substring(0,30).padEnd(30, ' ');
-        const yy = anio.toString().slice(-2);
-        const mesNombre = meses[m];
-        let codigoConc = `0CJ${yy}${item.codigoRestante}${mesNombre}`.substring(0,40).padEnd(40, ' ');
-        const mesStr = String(m+1).padStart(2, '0');
-        const diaStr = String(diaInscripcion).padStart(2, '0');
-        const fechaVenc = `${anio}${mesStr}${diaStr}`;
-        const importeCentavos = Math.round(item.importe * 100);
-        const importeStr = importeCentavos.toString().padStart(15, '0');
-        sumaMin += importeCentavos;
-        sumaMax += importeCentavos;
-        let linea = '02' + nombreCompleto + codigoConc + ' '.repeat(8) + fechaVenc + fechaBloqueo + '0'.repeat(2)
-          + importeStr + importeStr + '0'.repeat(180) + 'L000000000000000' + '\r\n';
-        contenido += linea;
-        contadorRegistros++;
-      }
-    });
-    let linea03 = '03';
-    linea03 += String(contadorRegistros).padStart(9, '0');
-    linea03 += String(sumaMin).padStart(18, '0');
-    linea03 += String(sumaMax).padStart(18, '0');
-    linea03 += '0'.repeat(18);
-    linea03 += ' '.repeat(295);
-    contenido += linea03;
-    const filename = `carga_bbva_${fechaFact}_${generateCount}.txt`;
-    const blob = new Blob([contenido], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+function generarTxt() {
+  if (!editingMacroId) {
+    alert("No hay macro seleccionada.");
+    return;
   }
+
+  const mac = macros.find(m => m.id === editingMacroId);
+  if (!mac) {
+    alert("Macro no encontrada");
+    return;
+  }
+
+  /* ====== parámetros fijos de cabecera (registro 01) ====== */
+  generateCount++;                                       // consecutivo local
+  const hoy        = new Date();
+  const yyyy       = hoy.getFullYear();                  // 2025
+  const yy         = yyyy.toString().slice(-2);          // 25
+  const fechaFact  = yyyy + String(hoy.getMonth() + 1).padStart(2, "0") +
+                     String(hoy.getDate()).padStart(2, "0");
+
+  const ruc            = "10181763472";
+  const moneda         = "PEN";
+  const numeroClase    = "000";      // BBVA: clase de servicio
+  const tipoActu       = "P";        // P = provisión
+  const blancosCab     = " ".repeat(322);
+
+  let contenido  = "";
+  /* ---------- REGISTRO 01 (cabecera) ----------- */
+  contenido +=
+      "01" +                 // id registro
+      ruc +
+      numeroClase +
+      moneda +
+      fechaFact +
+      "001" +                // Nº de lote
+      " ".repeat(7) +
+      tipoActu +
+      blancosCab +
+      "\r\n";
+
+  /* ---------- REGISTROS 02 (detalle) ----------- */
+  const meses = [
+    "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+    "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
+  ];
+
+  let contadorReg  = 0;
+  let importeMin   = Number.POSITIVE_INFINITY;   // en céntimos
+  let importeMax   = 0;
+  let importeTotal = 0;
+
+  /* Para la fecha de bloqueo (30‑SEP del año siguiente) */
+  const fechaBloqueo = `${yyyy + 1}0930`;
+
+  mac.alumnos.forEach(item => {
+    const fechaIns = new Date(item.fechaInscripcion);
+    const anioIni  = fechaIns.getFullYear();
+    const mesIni   = fechaIns.getMonth();        // 0–11
+    const diaIns   = String(fechaIns.getDate()).padStart(2, "0");
+
+    /* -------- prefijo CJ / 0CJ según regla del banco -------- */
+    const codigoNum  = parseInt(item.codigoRestante, 10);  // ej. '37' → 37
+    const prefijo    = codigoNum < 100
+                        ? `CJ${yyyy}`      //  CJ2025
+                        : `0CJ${yy}`;      // 0CJ25
+
+    for (let m = mesIni; m < 12; m++) {
+      const mesNombre = meses[m];                         // texto (ENERO, …)
+      const mesStr    = String(m + 1).padStart(2, "0");   // 01‑12
+
+      /* ------------- campo “concepto” (40 car.) ------------- */
+      const codigoConc = (
+        prefijo +
+        item.codigoRestante.padStart(2, "0") +   // asegura 2 dígitos
+        mesNombre
+      )
+        .substring(0, 40)   // si se pasa, corta
+        .padEnd(40, " ");   // rellena a la derecha
+
+      /* ------------ importe en céntimos (18 N) -------------- */
+      const importeCent = Math.round(item.importe * 100);
+
+      importeMin   = Math.min(importeMin, importeCent);
+      importeMax   = Math.max(importeMax, importeCent);
+      importeTotal += importeCent;
+
+      /* ---------- armado del registro 02 (360 car.) --------- */
+      let linea02 =
+        "02" +
+        (item.apellidos + " " + item.nombre)           // alumno
+          .substring(0, 30)
+          .padEnd(30, " ") +
+        codigoConc +                                   // concepto
+        " ".repeat(8) +                                // libre
+        `${anioIni}${mesStr}${diaIns}` +               // fecha venc.
+        fechaBloqueo +
+        "00" +                                         // tipo de recargo
+        String(importeCent).padStart(15, "0") +        // importe mínimo
+        String(importeCent).padStart(15, "0") +        // importe máximo
+        "0".repeat(180) +                              // blanco / libre
+        "L000000000000000";                            // indicador detalle
+
+      /* asegurar 360 */
+      linea02 = linea02.padEnd(360, " ");
+      contenido += linea02 + "\r\n";
+      contadorReg++;
+    }
+  });
+
+  /* ---------- REGISTRO 03 (trailer) ------------ */
+  let linea03 =
+    "03" +
+    String(contadorReg).padStart(9, "0") +
+    String(importeMin) .padStart(18, "0") +
+    String(importeMax) .padStart(18, "0") +
+    String(importeTotal).padStart(18, "0") +
+    " ".repeat(295);
+
+  contenido += linea03; // el 03 no lleva CRLF final según BBVA
+
+  /* ---------- descarga del archivo .TXT ---------- */
+  const filename = `carga_bbva_${fechaFact}_${generateCount}.txt`;
+  const blob     = new Blob([contenido], { type: "text/plain" });
+  const url      = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href     = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+
+
 function openTabMacros(tabName) {
   // 1) Validar permisos antes de desactivar nada
   if (tabName === 'Macros') {
@@ -1502,26 +1799,27 @@ function openTabMacros(tabName) {
   let MATRICULA_ID = null;
   let editingServiceId = null;
   let editingServiceChildId = null;
-  async function loadFromFirebaseServices(){
-    try {
-      const docRef = doc(db, "data", "servicesData");
-      const docSnap = await getDoc(docRef);
-      if(docSnap.exists()){
-        const parsed = docSnap.data();
-        services = parsed.services || [];
-        nextServiceId = parsed.nextServiceId || 1;
-        nextVariantId = parsed.nextVariantId || 1;
-        nextServiceChildId = parsed.nextServiceChildId || 1;
-      } else {
-        services = [];
-        nextServiceId = 1;
-        nextVariantId = 1;
-        nextServiceChildId = 1;
-      }
-    } catch(error){
-      console.error("Error loading services from Firebase:", error);
-    }
-  }
+async function loadFromFirebaseServices(){
+  const snap = await getDoc(doc(db,"data","servicesData"));
+  if(!snap.exists()) return;
+
+  services = snap.data().services || [];
+const hoyYM = getYearMonth();
+  let changed = false;
+
+
+  services.forEach(serv=>{
+    serv.children.forEach(ch=>{
+
+if(!ch.pagoPorMes){
+ch.pagoPorMes = { [hoyYM]: !!ch.pagoPension };
+ delete ch.pagoPension;            // ya no lo usaremos
+changed = true;
+}
+    });
+  });
+  if(changed) await saveToFirebaseServices();  // ⬅ guarda solo diferencias
+}
   async function saveToFirebaseServices(){
     try {
       const docRef = doc(db, "data", "servicesData");
@@ -1537,6 +1835,7 @@ function openTabMacros(tabName) {
     ensureMatriculaService();
     showServicesList();
     setupDaysButtons();
+  initSelectorMes('servicesMes');
   }
   function ensureMatriculaService(){
     if(serviceCheckDone) return;
@@ -1867,61 +2166,63 @@ function editService(serviceId) {
     document.getElementById('childDate').value = '';
     document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
   }
-function renderChildrenTable(arr) {
+function renderChildrenTable(arr, mesKey = getYearMonth()) {
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
+
   const serv = services.find(s => s.id === editingServiceId);
   if (!serv) return;
 
-  arr.forEach(ch => {
+  /* --- filtros: mes activo y, si existe, búsqueda por nombre --- */
+  const filtered = arr
+    .filter(ch => childIsActiveInMonth(ch, mesKey))
+    .filter(ch => {
+      if (!childrenSearchTerm) return true;        // variable global
+      const fullName = (ch.name + ' ' + ch.lastname).toLowerCase();
+      return fullName.includes(childrenSearchTerm);
+    });
+
+  /* --- pintamos la tabla --- */
+  filtered.forEach(ch => {
     const row = tbody.insertRow();
 
-    // Columna 1: Nombre
     row.insertCell(0).textContent = ch.name;
-
-    // Columna 2: Apellidos
     row.insertCell(1).textContent = ch.lastname;
-
-    // Columna 3: Fecha
     row.insertCell(2).textContent = ch.date;
 
-    // Columna 4: Variante
     const variant = serv.variants.find(v => v.id === ch.variantId);
     row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
 
-    // Columna 5: Pagó Pensión (botón tipo Sí / No)
-    const cellPension = row.insertCell(4);
-    const btnP = document.createElement('button');
-    btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-    btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-    btnP.style.color = '#fff';
-    btnP.style.border = 'none';
-    btnP.style.borderRadius = '6px';
-    btnP.style.padding = '6px 10px';
-    btnP.onclick = () => {
-      // Toggle
-      ch.pagoPension = !ch.pagoPension;
-      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-      // Guardamos cambios en Firebase
+    /* ========= Columna “Pagó pensión” ========= */
+    const cellPago = row.insertCell(4);
+    const pagado = !!ch.pagoPorMes?.[mesKey];
+    const btnPago = document.createElement('button');
+    btnPago.textContent = pagado ? 'Sí' : 'No';
+    btnPago.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
+    btnPago.style.color = '#fff';
+    btnPago.style.border = 'none';
+    btnPago.style.borderRadius = '6px';
+    btnPago.style.padding = '6px 10px';
+    btnPago.onclick = () => {
+      ch.pagoPorMes[mesKey] = !pagado;
       saveToFirebaseServices();
+      renderChildrenTable(arr, mesKey);   // refresca la vista
     };
-    cellPension.appendChild(btnP);
+    cellPago.appendChild(btnPago);
 
-    // Columna 6: Pensiones Atrasadas (input type="number")
-    const cellAtrasos = row.insertCell(5);
+    /* ========= Columna “Pensiones atrasadas” ========= */
+    const cellAtraso = row.insertCell(5);
     const inputA = document.createElement('input');
     inputA.type = 'number';
     inputA.style.width = '60px';
     inputA.value = ch.pensionesAtrasadas || 0;
     inputA.onchange = () => {
-      // Convertir a número y asignar
       ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
       saveToFirebaseServices();
     };
-    cellAtrasos.appendChild(inputA);
+    cellAtraso.appendChild(inputA);
 
-    // Columna 7: Acciones (editar, eliminar, etc.)
+    /* ========= Columna “Acciones” ========= */
     const accCell = row.insertCell(6);
     const btnEd = document.createElement('button');
     btnEd.textContent = '✎';
@@ -1935,6 +2236,7 @@ function renderChildrenTable(arr) {
     accCell.appendChild(btnDel);
   });
 }
+
 
   function agregarOguardarChild(){
     if(!editingServiceId){
@@ -2049,11 +2351,11 @@ if(editingServiceChildId === null){
   /**************************************************************
    * FINANZAS (NUEVO MENÚ)
    **************************************************************/
-  // Variables para finanzas
-  let finanzasData = {
-    egresos: [], // Array de objetos de egresos
-    ingresos: [] // Se obtendrán de los registros de servicios (niños)
-  };
+let finanzasData = {
+  egresos: [],
+  ingresos: [],
+  resumenMensual: {}   //  <-- NUEVO
+};
   // Se espera que cada registro de egreso tenga: id, nombre, tipo, subtipo, cantidad, descuento, mes, año
   let nextEgresoId = 1;
   // Para simplificar, los ingresos se calcularán a partir de los datos ya almacenados en servicios
@@ -2074,8 +2376,22 @@ if(editingServiceChildId === null){
       select.appendChild(option);
     }
   }
+function initSelectorMes(idSelect){
+  const sel = document.getElementById(idSelect);
+  sel.innerHTML = '';
+  const hoy = new Date();
+  for (let i = 0; i < 12; i++){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const opt   = document.createElement('option');
+    opt.value   = value;
+    opt.textContent = `${meses[d.getMonth()]} ${d.getFullYear()}`;
+    sel.appendChild(opt);
+  }
+}
   // Función para cambiar de mes en Finanzas
   function cambiarMesFinanzas(){
+    monthlyPaymentCheckAllServices();
     renderFinanzas();
   }
   function cargarSubtiposEgresos() {
@@ -2088,6 +2404,18 @@ if(editingServiceChildId === null){
     sel.appendChild(opt);
   });
   }
+function cambiarMesServices(){
+  const serv = services.find(s => s.id === editingServiceId);
+  if(serv){
+    const mesSel = document.getElementById('servicesMes').value;
+    renderChildrenTable(serv.children, mesSel);
+  }
+}
+
+function cambiarMesMatriculas(){
+  renderMatriculasList();   // la función ya leerá el nuevo valor del select
+}
+
 function agregarNuevoSubtipo() {
   const nuevo = prompt("Ingresa el nuevo subtipo de egreso:");
   if(nuevo && nuevo.trim() !== "") {
@@ -2112,51 +2440,74 @@ async function initFinanzas() {
   actualizarGraficosFinanzas();
 }
 
+function carryOverFixedEgresos(mesKey) {
+  /*  Función vacía por ahora.
+      Si necesitas lógica adicional, la añades aquí. */
+}
 
 
 
   // Renderiza la vista de Finanzas según el mes seleccionado
-function renderFinanzas(){
+function renderFinanzas() {
   const mesSeleccionado = document.getElementById('finanzasMes').value;
-  // Filtrar egresos para el mes seleccionado
-  const egresosFiltrados = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado);
 
-  // Cálculos para egresos
-  const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
-  const totalEgresosFijos = calcularEgresosTipo(egresosFiltrados, "Fijo");
-  const totalEgresos = calcularEgresosTotales(egresosFiltrados);
+  carryOverFixedEgresos(mesSeleccionado);
 
-  // Cálculos para ingresos
-  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
-  const netoEsperado = calcularIngresosNetoEsperado(mesSeleccionado);
-  const brutoTotales = calcularIngresosBrutosTotales(mesSeleccionado);
-  const netoTotales = calcularIngresosNetosTotales(mesSeleccionado);
+  const [anioSel, mesSel] = mesSeleccionado.split("-").map(Number);
 
-  // Actualiza las tarjetas
-  document.getElementById('egresosVariables').textContent = "S/ " + totalEgresosVariables.toFixed(2);
-  document.getElementById('egresosFijos').textContent = "S/ " + totalEgresosFijos.toFixed(2);
-  document.getElementById('egresosTotales').textContent = "S/ " + totalEgresos.toFixed(2);
-  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
-  document.getElementById('ingresosNetosEsperados').textContent = "S/ " + netoEsperado.toFixed(2);
-  document.getElementById('ingresosBrutosTotales').textContent = "S/ " + brutoTotales.toFixed(2);
-  document.getElementById('ingresosNetosTotales').textContent = "S/ " + netoTotales.toFixed(2);
-  // También podrías asignar ingresosEsperados e ingresosNetos según tu lógica
-  document.getElementById('ingresosBruto').textContent = "S/ " + brutoEsperado.toFixed(2);
-  document.getElementById('ingresosNetos').textContent = "S/ " + netoTotales.toFixed(2);
-
-  // Si deseas actualizar un indicador de variación, por ejemplo:
-  const variacion = netoTotales; // o alguna otra fórmula
-  const indicadorEl = document.getElementById('indicadorVariacion');
-  indicadorEl.textContent = "Variación: " + (variacion >= 0 ? "+" : "") + variacion.toFixed(2) + "%";
-  if (variacion < 0) {
-    indicadorEl.style.color = "red";
-  } else {
-    indicadorEl.style.color = "";
+  // ¿Ya hay fijos copiados?
+  const existeFijos = finanzasData.egresos.some(e =>
+    e.tipo === "Fijo" &&
+    e.anio === anioSel &&
+    e.mes === mesSel
+  );
+  if (!existeFijos) {
+    const prev = new Date(anioSel, mesSel - 2, 1);
+    const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const prevFijos = finanzasData.egresos.filter(e =>
+      e.tipo === "Fijo" &&
+      `${e.anio}-${String(e.mes).padStart(2, '0')}` === prevKey
+    );
+    prevFijos.forEach(e => {
+      finanzasData.egresos.push({
+        ...e,
+        id: nextEgresoId++,
+        anio: anioSel,
+        mes: mesSel
+      });
+    });
   }
 
-  // Renderizar tablas y actualizar gráficos (con tus funciones actuales)
+  const egresosFiltrados = finanzasData.egresos
+    .filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado);
+
+  const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
+  const totalEgresosFijos     = calcularEgresosTipo(egresosFiltrados, "Fijo");
+  const totalEgresos          = calcularEgresosTotales(egresosFiltrados);
+
+  const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const netoEsperado  = calcularIngresosNetoEsperado(mesSeleccionado);
+  const brutoTotales  = calcularIngresosBrutosTotales(mesSeleccionado);
+  const netoTotales   = calcularIngresosNetosTotales(mesSeleccionado);
+
+  document.getElementById('egresosVariables').textContent     = "S/ " + totalEgresosVariables.toFixed(2);
+  document.getElementById('egresosFijos').textContent         = "S/ " + totalEgresosFijos.toFixed(2);
+  document.getElementById('egresosTotales').textContent       = "S/ " + totalEgresos.toFixed(2);
+  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetosEsperados').textContent  = "S/ " + netoEsperado.toFixed(2);
+  document.getElementById('ingresosBrutosTotales').textContent   = "S/ " + brutoTotales.toFixed(2);
+  document.getElementById('ingresosNetosTotales').textContent    = "S/ " + netoTotales.toFixed(2);
+  document.getElementById('ingresosBruto').textContent          = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetos').textContent          = "S/ " + netoTotales.toFixed(2);
+
+  const variacion = netoTotales;
+  const indicador = document.getElementById('indicadorVariacion');
+  indicador.textContent = "Variación: " + (variacion >= 0 ? "+" : "") + variacion.toFixed(2) + "%";
+  indicador.style.color = variacion < 0 ? "red" : "";
+
   renderTablaEgresos(egresosFiltrados);
   renderTablaIngresos(mesSeleccionado);
+  actualizarResumenMensual(mesSeleccionado);
   actualizarGraficosFinanzas();
 }
 
@@ -2205,129 +2556,119 @@ function renderTablaEgresos(egresos) {
     accCell.appendChild(btnDel);
   });
 }
+/* -----------------------------------------------------------
+   Devuelve arrays listos para Chart.js usando resumenMensual
+   keyName = 'netoTotales' | 'egresosTotales' | 'brutoTotales' | …
+----------------------------------------------------------- */
+function obtenerLineal(keyName){
+  const labels = [];
+  const datos  = [];
 
-function renderTablaIngresos(mesSeleccionado) {
+  // las claves están en formato "YYYY-MM"
+  const mesesOrdenados = Object.keys(finanzasData.resumenMensual)
+                               .sort()        // ascendente
+                               .slice(-12);   // últimos 12
+
+  mesesOrdenados.forEach(k=>{
+    const [y,m] = k.split('-');                // ej. "2025","05"
+    labels.push(`${meses[parseInt(m)-1]} ${y}`);   // "MAYO 2025"
+    datos.push(finanzasData.resumenMensual[k][keyName] || 0);
+  });
+
+  return { labels, datos };
+}
+
+function renderTablaIngresos(mesKey){
   const tbody = document.getElementById('tablaIngresos').querySelector('tbody');
   tbody.innerHTML = '';
 
-  // Tomamos valores del filtro
-  const tipoSeleccionado = document.getElementById("filtroIngresosTipo").value;     // "" / "Matrícula" / "Taller"
-  const tallerSeleccionado = document.getElementById("filtroIngresosSubtipo").value; // "" / "Inglés" / "Música" / etc.
+  services.forEach(serv=>{
+    serv.children.forEach(child=>{
+      // solo alumnos activos ese mes
+      if(!childIsActiveInMonth(child, mesKey)) return;
 
-  // Recorremos todos los servicios
-  services.forEach(serv => {
-    // 1) Verificamos si coincide el filtro de tipo
-    //    "Matrícula" => serv.title === "Matrícula"
-    //    "Taller" => serv.title !== "Matrícula"
-    //    "" => sin restricción
-    if (tipoSeleccionado === "Matrícula" && serv.title !== "Matrícula") {
-      return; // no coincide
-    }
-    if (tipoSeleccionado === "Taller" && serv.title === "Matrícula") {
-      return; // no coincide
-    }
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = child.name;
+      row.insertCell(1).textContent = (serv.title === 'Matrícula') ? 'Matrícula' : 'Taller';
+      row.insertCell(2).textContent = serv.title;
+      row.insertCell(3).textContent = `S/ ${child.total?.toFixed(2) || '0.00'}`;
 
-    // 2) Verificar si coincide el filtro de "tallerSeleccionado"
-    //    (solo si no es vacío)
-    if (tallerSeleccionado && serv.title !== tallerSeleccionado) {
-      return; // no coincide
-    }
-
-    // Ahora iteramos sus children (ingresos)
-    serv.children.forEach(child => {
-      if (child.mesRegistro === mesSeleccionado) {
-        // Creamos una fila
-        const row = tbody.insertRow();
-        row.insertCell(0).textContent = child.name + " " + child.lastname;
-
-        // Determinar si es "Matrícula" o "Taller" para la columna 2
-        const tipo = (serv.title === "Matrícula") ? "Matrícula" : "Taller";
-        row.insertCell(1).textContent = tipo;
-
-        // En la columna 3, el "Subtipo" = serv.title (para talleres),
-        // si es "Matrícula" la dejamos vacía o pones "Sin taller"
-        row.insertCell(2).textContent = (tipo === "Taller") ? serv.title : "";
-
-        row.insertCell(3).textContent = "S/ " + (child.total || 0).toFixed(2);
-
-        // Celda 5: Botón "Pagó Mensualidad"
-        const cellPago = row.insertCell(4);
-        const btnPago = document.createElement('button');
-        btnPago.textContent = child.pagoPension ? "Sí" : "No";
-        btnPago.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
-        btnPago.style.color = "#fff";
-        btnPago.style.border = "none";
-        btnPago.style.borderRadius = "6px";
-        btnPago.style.padding = "6px 10px";
-        btnPago.onclick = () => {
-          child.pagoPension = !child.pagoPension;
-          btnPago.textContent = child.pagoPension ? "Sí" : "No";
-          btnPago.style.backgroundColor = child.pagoPension ? "#3BB273" : "#E74C3C";
-          saveToFirebaseServices();
-          // Actualizar la tabla
-          renderTablaIngresos(mesSeleccionado);
-          renderFinanzas(); 
-        };
-        cellPago.appendChild(btnPago);
-      }
+      /* --- botón Pagó Mensualidad --- */
+      const cellPago = row.insertCell(4);
+      const pagado   = !!child.pagoPorMes?.[mesKey];
+      const btn      = document.createElement('button');
+      btn.textContent         = pagado ? 'Sí' : 'No';
+      btn.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
+      btn.style.color         = '#fff';
+      btn.style.border        = 'none';
+      btn.style.borderRadius  = '6px';
+      btn.style.padding       = '6px 10px';
+      btn.onclick = async ()=>{
+        child.pagoPorMes[mesKey] = !pagado;
+        await saveToFirebaseServices();
+        renderFinanzas();               // refresca totales
+      };
+      cellPago.appendChild(btn);
     });
   });
 }
 
 
 
-  function agregarEgreso(){
-  const nombre = document.getElementById('egresoNombre').value.trim();
-  const tipo = document.getElementById('egresoTipo').value;
-  const subtipo = document.getElementById('egresoSubtipo').value;
-  const cantidad = document.getElementById('egresoCantidad').value;
-  const descuento = document.getElementById('egresoDescuento').value;
+/* variable global */
+let editingEgresoId = null;     //  ⬅  declara UNA sola vez justo después de nextEgresoId
+
+function agregarEgreso(){
+  const nombre    = document.getElementById('egresoNombre').value.trim();
+  const tipo      = document.getElementById('egresoTipo').value;
+  const subtipo   = document.getElementById('egresoSubtipo').value;
+  const cantidad  = document.getElementById('egresoCantidad').value;
+  const descuento = document.getElementById('egresoDescuento').value || 0;
+
   if(!nombre || !tipo || !subtipo || !cantidad){
     alert("Completa todos los campos del egreso");
     return;
   }
-  const mesAnio = document.getElementById('finanzasMes').value.split('-');
-  const anio = mesAnio[0];
-  const mes = parseInt(mesAnio[1]);
-  const nuevo = {
-    id: nextEgresoId++,
-    nombre,
-    tipo,
-    subtipo,
-    cantidad,
-    descuento: descuento || 0,
-    anio: anio,
-    mes: mes
-  };
-  finanzasData.egresos.push(nuevo);
-  // Limpiar campos
-  document.getElementById('egresoNombre').value = '';
-  document.getElementById('egresoTipo').value = '';
-  document.getElementById('egresoSubtipo').value = '';
+
+  /* mes y año actuales del selector */
+  const [anioStr, mesStr] = document.getElementById('finanzasMes').value.split('-');
+  const anio = parseInt(anioStr,10);
+  const mes  = parseInt(mesStr,10);
+
+  if (editingEgresoId !== null){               // ——— EDITAR ———
+    const eg = finanzasData.egresos.find(e => e.id === editingEgresoId);
+    if (eg){
+      Object.assign(eg,{ nombre, tipo, subtipo, cantidad, descuento, anio, mes });
+    }
+    editingEgresoId = null;
+  }else{                                       // ——— NUEVO ———
+    finanzasData.egresos.push({
+      id: nextEgresoId++,
+      nombre, tipo, subtipo,
+      cantidad, descuento,
+      anio, mes
+    });
+  }
+
+  /* limpiar formulario */
+  document.getElementById('egresoNombre').value   = '';
+  document.getElementById('egresoTipo').value     = '';
+  document.getElementById('egresoSubtipo').value  = '';
   document.getElementById('egresoCantidad').value = '';
-  document.getElementById('egresoDescuento').value = '';
-  renderFinanzas();
-  saveFinanzasData(); // Guarda en Firebase
+  document.getElementById('egresoDescuento').value= '';
+
+  renderFinanzas();     // refresca tablas y totales
+  saveFinanzasData();   // persiste en Firebase
 }
 
-  function editarEgreso(id){
-    // Función para editar egreso: se deben cargar los datos en el formulario y luego actualizar el registro.
-    const egreso = finanzasData.egresos.find(e => e.id === id);
-    if(!egreso) return;
-    document.getElementById('egresoNombre').value = egreso.nombre;
-    document.getElementById('egresoTipo').value = egreso.tipo;
-    document.getElementById('egresoSubtipo').value = egreso.subtipo;
-    document.getElementById('egresoCantidad').value = egreso.cantidad;
-    document.getElementById('egresoDescuento').value = egreso.descuento;
-    // Eliminar el registro para que al agregar se reescriba
-    finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
-  }
-  function eliminarEgreso(id){
-  if(!confirm("¿Eliminar egreso?")) return;
-  finanzasData.egresos = finanzasData.egresos.filter(e => e.id !== id);
-  renderFinanzas();
-  saveFinanzasData(); // Asegúrate de llamar a guardar datos en Firebase
+function editarEgreso(id){
+  const eg = finanzasData.egresos.find(e=>e.id===id);
+  if(!eg) return;
+
+  /* rellenamos el formulario … */
+  editingEgresoId = id;                        // ← NUEVO
 }
+
 
   // Funciones para actualizar gráficos (placeholders)
 function actualizarGraficosFinanzas(){
@@ -2382,22 +2723,32 @@ window.chartEgresosCircular = new Chart(ctxPastelEgresos, {
   },
   options: { responsive: true, maintainAspectRatio: false }
 });
-let ingresosMatricula = 0, ingresosTaller = 0;
+/* ======= INGRESOS del mes seleccionado ======= */
+let ingresosMatricula = 0;
+let ingresosTaller    = 0;
+
 services.forEach(serv => {
   serv.children.forEach(child => {
-    if(child.mesRegistro === mesSeleccionado && child.pagoPension) {
-      if(serv.title === "Matrícula") {
-        ingresosMatricula += child.total || 0;
-      } else {
-        ingresosTaller += child.total || 0;
-      }
-    }
+    // ¿el niño está activo ese mes?
+    if (!childIsActiveInMonth(child, mesSeleccionado)) return;
+
+    // ¿pagó ese mes?
+    const pagado = !!child.pagoPorMes?.[mesSeleccionado];
+    if (!pagado) return;
+
+    const monto = child.total || 0;
+    if (serv.title === "Matrícula") ingresosMatricula += monto;
+    else                            ingresosTaller    += monto;
   });
 });
-const ctxPastelIngresos = document.getElementById('chartIngresosCircular').getContext('2d');
-if (window.chartIngresosCircular && typeof window.chartIngresosCircular.destroy === 'function') {
+
+const ctxPastelIngresos = document
+  .getElementById('chartIngresosCircular')
+  .getContext('2d');
+
+if (window.chartIngresosCircular?.destroy)
   window.chartIngresosCircular.destroy();
-}
+
 window.chartIngresosCircular = new Chart(ctxPastelIngresos, {
   type: 'pie',
   data: {
@@ -2407,38 +2758,24 @@ window.chartIngresosCircular = new Chart(ctxPastelIngresos, {
       backgroundColor: ['#3BB273', '#f1c40f']
     }]
   },
-  options: { responsive: true, maintainAspectRatio: false }
+  options: { responsive:true, maintainAspectRatio:false }
 });
 
-}
-function obtenerDatosLinealIngresosNetos(){
-  const labels = [];
-  const datos = [];
-  const d = new Date();
-  // Ejemplo: últimos 12 meses
-  for(let i = 11; i >= 0; i--){
-    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
-    let mes = fecha.getMonth() + 1;
-    let anio = fecha.getFullYear();
-    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
-    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
-    datos.push(calcularIngresosNetosTotales(key));
-  }
-  return { labels, datos };
-}
-
-const datosLineal = obtenerDatosLinealIngresosNetos();
+const datNeto = obtenerLineal('netoTotales');   // ← histórico ya cerrado
 const ctxLineal = document.getElementById('chartFinanzasLinealTotal').getContext('2d');
-if (window.chartFinanzasLinealTotal && typeof window.chartFinanzasLinealTotal.destroy === 'function') {
+
+if (window.chartFinanzasLinealTotal &&
+    typeof window.chartFinanzasLinealTotal.destroy === 'function') {
   window.chartFinanzasLinealTotal.destroy();
-}
+}   // 👈  llave que faltaba
+
 window.chartFinanzasLinealTotal = new Chart(ctxLineal, {
   type: 'line',
   data: {
-    labels: datosLineal.labels,
+    labels: datNeto.labels,
     datasets: [{
       label: 'Ingresos Netos Totales',
-      data: datosLineal.datos,
+      data:  datNeto.datos,
       borderColor: '#3BB273',
       backgroundColor: 'rgba(59,178,115,0.2)'
     }]
@@ -2446,60 +2783,49 @@ window.chartFinanzasLinealTotal = new Chart(ctxLineal, {
   options: { responsive: true, maintainAspectRatio: false }
 });
 
-const datosLinealIngresos = obtenerDatosLinealIngresosNetos(); // Reutilizando la función definida para Total Mensual
+const datIngresos = obtenerLineal('netoTotales');   // o 'brutoTotales' si prefieres
 const ctxLinealIngresos = document.getElementById('chartIngresosLineal').getContext('2d');
+
 if (window.chartIngresosLineal && typeof window.chartIngresosLineal.destroy === 'function') {
   window.chartIngresosLineal.destroy();
 }
-window.chartIngresosLineal = new Chart(ctxLinealIngresos, {
-  type: 'line',
-  data: {
-    labels: datosLinealIngresos.labels,
-    datasets: [{
-      label: 'Ingresos Netos Totales',
-      data: datosLinealIngresos.datos,
-      borderColor: '#3BB273',
-      backgroundColor: 'rgba(59,178,115,0.2)'
+
+window.chartIngresosLineal = new Chart(ctxLinealIngresos,{
+  type:'line',
+  data:{
+    labels: datIngresos.labels,
+    datasets:[{
+      label:'Ingresos Netos Totales',
+      data:  datIngresos.datos,
+      borderColor:'#3BB273',
+      backgroundColor:'rgba(59,178,115,0.2)'
     }]
   },
-  options: { responsive: true, maintainAspectRatio: false }
+  options:{ responsive:true, maintainAspectRatio:false }
 });
-
-function obtenerDatosLinealEgresos(){
-  const labels = [];
-  const datos = [];
-  const d = new Date();
-  for(let i = 11; i >= 0; i--){
-    let fecha = new Date(d.getFullYear(), d.getMonth() - i, 1);
-    let mes = fecha.getMonth() + 1;
-    let anio = fecha.getFullYear();
-    const key = `${anio}-${mes.toString().padStart(2, '0')}`;
-    labels.push(`${meses[fecha.getMonth()]} ${anio}`);
-    // Suma total de egresos para ese mes
-    const egresosMes = finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === key);
-    datos.push(calcularEgresosTotales(egresosMes));
-  }
-  return { labels, datos };
-}
-
-const datosLinealEgresos = obtenerDatosLinealEgresos();
+const datEgresos = obtenerLineal('egresosTotales');
 const ctxLinealEgresos = document.getElementById('chartEgresosLineal').getContext('2d');
+
 if (window.chartEgresosLineal && typeof window.chartEgresosLineal.destroy === 'function') {
   window.chartEgresosLineal.destroy();
 }
-window.chartEgresosLineal = new Chart(ctxLinealEgresos, {
-  type: 'line',
-  data: {
-    labels: datosLinealEgresos.labels,
-    datasets: [{
-      label: 'Egresos Totales',
-      data: datosLinealEgresos.datos,
-      borderColor: '#E74C3C',
-      backgroundColor: 'rgba(231,76,60,0.2)'
+
+window.chartEgresosLineal = new Chart(ctxLinealEgresos,{
+  type:'line',
+  data:{
+    labels: datEgresos.labels,
+    datasets:[{
+      label:'Egresos Totales',
+      data:  datEgresos.datos,
+      borderColor:'#E74C3C',
+      backgroundColor:'rgba(231,76,60,0.2)'
     }]
   },
-  options: { responsive: true, maintainAspectRatio: false }
+  options:{ responsive:true, maintainAspectRatio:false }
 });
+}
+
+
 
 function openTabFinanzas(tabName) {
   // 1) Validar permisos
@@ -2552,25 +2878,6 @@ function initFinanzasRealTime() {
     }
   });
 }
-  // Suscripción en tiempo real para Services
-function initServicesRealTime() {
-  const docRef = doc(db, "data", "servicesData");
-  onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const parsed = docSnap.data();
-      services = parsed.services || [];
-      nextServiceId      = parsed.nextServiceId      || nextServiceId;
-      nextVariantId      = parsed.nextVariantId      || nextVariantId;
-      nextServiceChildId = parsed.nextServiceChildId || nextServiceChildId;
-      // Si estás en la vista de Finanzas, refresca ahí también
-      if (screenStack[screenStack.length - 1] === "finanzas") {
-        renderFinanzas();
-        actualizarGraficosFinanzas();
-      }
-    }
-  });
-}
-
 
   /**************************************************************
    * FICHA INFORMATIVA (Ya existente)
@@ -2826,24 +3133,42 @@ cont.appendChild(btnDescargarWord);
   async function initMatriculas(){
     await loadFromFirebaseServices();
     ensureMatriculaService();
-    monthlyPensionCheck();
+    monthlyPaymentCheckAllServices();
+  initSelectorMes('filtroMesMatriculas');
     renderMatriculasList();
   }
-  function monthlyPensionCheck(){
-    const matServ = services.find(s => s.title === 'Matrícula');
-    if(!matServ) return;
-    const currentYM = getYearMonth();
-    matServ.children.forEach(ch => {
-      if(ch.lastPagoCheck && ch.lastPagoCheck !== currentYM){
-        if(!ch.pagoPension){
+function monthlyPaymentCheckAllServices() {
+  const currentYM = getYearMonth(); // p. ej. "2025-05"
+  services.forEach(serv => {
+    serv.children.forEach(ch => {
+      if (ch.lastPagoCheck && ch.lastPagoCheck !== currentYM) {
+        // si no pagó en el mes anterior, se acumula atraso
+        if (!ch.pagoPension) {
           ch.pensionesAtrasadas = (ch.pensionesAtrasadas || 0) + 1;
         }
+        // reset
         ch.pagoPension = false;
         ch.lastPagoCheck = currentYM;
       }
     });
-    saveToFirebaseServices();
-  }
+  });
+  saveToFirebaseServices();
+}
+function filterMatriculasBySearch(){
+  matriculasSearchTerm = document
+      .getElementById("matriculasSearch")
+      .value.trim()
+      .toLowerCase();
+  renderMatriculasList();        // vuelve a pintar con el filtro
+}
+
+
+function filterChildren() {
+  childrenSearchTerm = document.getElementById("childrenSearch").value.trim().toLowerCase();
+  const serv = services.find(s => s.id === editingServiceId);
+  if (serv) renderChildrenTable(serv.children);
+}
+
   function eliminarSubtipo() {
   const sel = document.getElementById('egresoSubtipo');
   const subtipoSeleccionado = sel.value;
@@ -2859,66 +3184,83 @@ cont.appendChild(btnDescargarWord);
   }
 }
 
-  function renderMatriculasList(){
-    const matServ = services.find(s => s.title === 'Matrícula');
-    if(!matServ) return;
-    const tbody = document.getElementById('tbodyMatriculas');
-    tbody.innerHTML = '';
-    matServ.children.forEach(ch => {
-      const row = tbody.insertRow();
-      row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
-      row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
-      const cellF = row.insertCell(2);
-      const btnF = document.createElement('button');
-      btnF.className = 'ficha-btn';
-      btnF.style.fontWeight = '600';
-      btnF.style.borderRadius = '8px';
-      btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
-      btnF.style.color = '#fff';
-      btnF.textContent = 'Ficha Informativa';
-      btnF.onclick = () => openFicha(ch);
-      cellF.appendChild(btnF);
-      const cellP = row.insertCell(3);
-      const btnP = document.createElement('button');
-      btnP.className = 'pension-btn';
-      btnP.style.fontWeight = '600';
-      btnP.style.borderRadius = '8px';
-      btnP.style.color = '#fff';
-      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-      btnP.onclick = () => {
-        ch.pagoPension = !ch.pagoPension;
-        btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-        btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-        saveToFirebaseServices();
-      };
-      cellP.appendChild(btnP);
-      const cellA = row.insertCell(4);
-      const inputA = document.createElement('input');
-      inputA.type = 'number';
-      inputA.style.width = '60px';
-      inputA.value = ch.pensionesAtrasadas || 0;
-      inputA.onchange = () => {
-        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
-        saveToFirebaseServices();
-      };
-      cellA.appendChild(inputA);
+function renderMatriculasList(){
+  const matServ = services.find(s => s.title === 'Matrícula');
+  if(!matServ) return;
+
+  const mesKey = document.getElementById('filtroMesMatriculas').value || getYearMonth();
+  const tbody  = document.getElementById('tbodyMatriculas');
+  tbody.innerHTML = '';
+
+  /* 1️⃣ — filtramos primero */
+  const alumnos = matServ.children
+    .filter(ch => childIsActiveInMonth(ch, mesKey))
+    .filter(ch => {
+      if(!matriculasSearchTerm) return true;
+      const fullName = (ch.lastname + ' ' + ch.name).toLowerCase();
+      return fullName.includes(matriculasSearchTerm);
     });
-  }
+
+  /* 2️⃣ — pintamos con el resultado filtrado */
+  alumnos.forEach(ch => {
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
+    row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
+
+    /* ——— Botón Ficha ——— */
+    const cellF = row.insertCell(2);
+    const btnF  = document.createElement('button');
+    btnF.className = 'ficha-btn';
+    btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
+btnF.style.color           = '#fff';
+    btnF.textContent = 'Ficha Informativa';
+    btnF.onclick = () => openFicha(ch);
+    cellF.appendChild(btnF);
+
+    /* ——— Pagó Pensión ——— */
+    const cellP  = row.insertCell(3);
+    const pagado = !!ch.pagoPorMes?.[mesKey];
+    const btnP   = document.createElement('button');
+    btnP.className = 'pension-btn';
+    btnP.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
+btnP.style.color           = '#fff';
+    btnP.textContent = pagado ? 'Sí' : 'No';
+    btnP.onclick = () => {
+      if(!ch.pagoPorMes) ch.pagoPorMes = {};
+      ch.pagoPorMes[mesKey] = !pagado;
+      saveToFirebaseServices();
+      renderMatriculasList();
+    };
+    cellP.appendChild(btnP);
+
+    /* ——— Atrasos ——— */
+    const cellA = row.insertCell(4);
+    const inputA = document.createElement('input');
+    inputA.type  = 'number';
+    inputA.style.width = '60px';
+    inputA.value = ch.pensionesAtrasadas || 0;
+    inputA.onchange = () => {
+      ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+      saveToFirebaseServices();
+    };
+    cellA.appendChild(inputA);
+  });
+}
+
   function filtrarMatriculas(){
-    const valAno = document.getElementById('filtroAno').value;
-    const valPension = document.getElementById('filtroPension').value;
-    const matServ = services.find(s => s.title === 'Matrícula');
+  const mesKey     = document.getElementById('filtroMesMatriculas').value || getYearMonth();   // ✅
+  const valAno     = document.getElementById('filtroAno').value;
+  const valPension = document.getElementById('filtroPension').value;
     if(!matServ) return;
     let arr = [...matServ.children];
     if(valAno){
       arr = arr.filter(ch => getVariantName(ch.variantId) === valAno);
     }
-    if(valPension === 'SI'){
-      arr = arr.filter(ch => (!ch.pagoPension || ch.pensionesAtrasadas > 0));
-    } else if(valPension === 'NO'){
-      arr = arr.filter(ch => (ch.pagoPension && ch.pensionesAtrasadas === 0));
-    }
+  if(valPension === 'SI'){
+    arr = arr.filter(ch => !ch.pagoPorMes?.[mesKey] || (ch.pensionesAtrasadas > 0));
+  }else if(valPension === 'NO'){
+    arr = arr.filter(ch =>  ch.pagoPorMes?.[mesKey] && (ch.pensionesAtrasadas === 0));
+  }
     const tbody = document.getElementById('tbodyMatriculas');
     tbody.innerHTML = '';
     arr.forEach(ch => {
@@ -3400,6 +3742,10 @@ function filtrarIngresos() {
     window.logout = logout
     window.filtrarEgresos = filtrarEgresos
     window.filtrarIngresos = filtrarIngresos
+    window.filterChildren = filterChildren
+    window.cambiarMesServices = cambiarMesServices
+    window.cambiarMesMatriculas = cambiarMesMatriculas
+    window.filterMatriculasBySearch = filterMatriculasBySearch;
   });
 </script>
 </body>
