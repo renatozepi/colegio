@@ -111,6 +111,29 @@
       cursor: pointer;
     }
     .bottom-left-btn:hover { background-color: #1a2e55; }
+.day-picker{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+  padding:6px;
+  display:grid;
+  grid-template-columns:repeat(7,30px);  /* 7 col = semana */
+  gap:4px;
+  z-index:9999;
+}
+.day-picker button{
+  width:30px;height:30px;
+  border:none;
+  background:#f9fbff;
+  cursor:pointer;
+}
+.day-picker button:hover{
+  background:#4a90e2;
+  color:#fff;
+}
+
 
     /* =================== TABS =================== */
     .tabs {
@@ -776,8 +799,15 @@
     <input type="text" id="childName" placeholder="Ej: JUAN" />
     <label>Apellidos:</label>
     <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
-    <label>Fecha Ingreso:</label>
-    <input type="date" id="childDate" />
+<label>Día Ingreso:</label>
+<input type="text"
+       id="childDay"
+       placeholder="Día"
+       readonly
+       onclick="openDayPicker()" />
+
+<!-- popup -->
+<div id="dayPicker" class="day-picker hidden"></div>
     <label id="labelVariantChild">Variante:</label>
     <select id="childVariantSelect">
       <!-- Llenado dinámico -->
@@ -1257,6 +1287,41 @@ function goBack() {
     }
   }
 /* --- Helpers de fechas --- */
+function openDayPicker(){
+  const inp    = document.getElementById('childDay');
+  const picker = document.getElementById('dayPicker');
+  picker.innerHTML = '';
+
+  const total = daysInSelectedMonth();
+  for(let d=1; d<=total; d++){
+    const btn = document.createElement('button');
+    btn.textContent = d;
+    btn.onclick = () => {
+      inp.value = d;
+      picker.classList.add('hidden');
+    };
+    picker.appendChild(btn);
+  }
+
+  /* posición bajo el input */
+  const rect = inp.getBoundingClientRect();
+  picker.style.top  = rect.bottom + window.scrollY + 4 + 'px';
+  picker.style.left = rect.left   + window.scrollX + 'px';
+  picker.classList.remove('hidden');
+}
+
+/* ——— cerrar si se hace clic fuera ——— */
+document.addEventListener('click', e=>{
+  const picker = document.getElementById('dayPicker');
+  if(!picker.contains(e.target) && e.target.id !== 'childDay'){
+    picker.classList.add('hidden');
+  }
+});
+
+function daysInSelectedMonth(){
+  const [y,m] = document.getElementById('servicesMes').value.split('-').map(Number);
+  return new Date(y, m, 0).getDate();        // último día del mes
+}
 function actualizarResumenMensual(mesKey){
   finanzasData.resumenMensual[mesKey] = {
     brutoEsperado  : calcularIngresosBrutoEsperado(mesKey),
@@ -1271,9 +1336,13 @@ function actualizarResumenMensual(mesKey){
 }
 
 function childIsActiveInMonth(child, mesKey){
-  // child.mesRegistro y mesKey están en formato "YYYY-MM" con mes a 2 dígitos
-  return child.mesRegistro <= mesKey;          // comparación lexicográfica sirve
+  /*   Sigue activo si:
+       – se matriculó en o antes de «mesKey»  y
+       – (no tiene mesBaja)  o  (mesKey < mesBaja)                */
+  return child.mesRegistro <= mesKey &&
+         (!child.mesBaja || mesKey < child.mesBaja);
 }
+
 function strToYYYYMM(str){                     // "2025-05" -> 202505
   return parseInt(str.replace('-',''));
 }
@@ -1905,41 +1974,67 @@ function openTabServices(tabName) {
 }
 
 
-  function showServicesList(){
-    const container = document.getElementById('servicesList');
-    container.innerHTML = '';
-    services.sort((a, b) => {
-      if(a.title === 'Matrícula') return -1;
-      if(b.title === 'Matrícula') return 1;
-      return 0;
-    });
-    services.forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'service-item';
-      const leftSpan = document.createElement('span');
-      leftSpan.textContent = `${s.title} (Variantes: ${s.variants.length}) (Niños: ${s.children.length})`;
-      const rightDiv = document.createElement('div');
-      if(s.title !== 'Matrícula'){
-        const btnEdit = document.createElement('button');
-        btnEdit.textContent = 'Editar';
-        btnEdit.onclick = () => editService(s.id);
-        rightDiv.appendChild(btnEdit);
-      }
-      const btnMat = document.createElement('button');
-      btnMat.textContent = 'Administrar Niños';
-      btnMat.onclick = () => openServiceChildren(s.id);
-      rightDiv.appendChild(btnMat);
-      if(s.title !== 'Matrícula'){
-        const btnDel = document.createElement('button');
-        btnDel.textContent = 'Eliminar';
-        btnDel.onclick = () => deleteService(s.id);
-        rightDiv.appendChild(btnDel);
-      }
-      div.appendChild(leftSpan);
-      div.appendChild(rightDiv);
-      container.appendChild(div);
-    });
-  }
+/* ==========================================================
+   Muestra la lista de servicios con los niños activos
+   en el mes actual (YYYY‑MM), no el total histórico.
+   ========================================================== */
+function showServicesList() {
+  const container = document.getElementById('servicesList');
+  container.innerHTML = '';
+
+  /* ——— 1) “Matrícula” siempre primero ——— */
+  services.sort((a, b) => {
+    if (a.title === 'Matrícula') return -1;
+    if (b.title === 'Matrícula') return 1;
+    return 0;
+  });
+
+  const mesActual = getYearMonth();              // p.ej. "2025‑05"
+
+  services.forEach(s => {
+    /* ——— contenedor de cada fila ——— */
+    const div = document.createElement('div');
+    div.className = 'service-item';
+
+    /* niños que siguen activos en el mesActual */
+    const ninosMes = s.children
+                      .filter(ch => childIsActiveInMonth(ch, mesActual))
+                      .length;
+
+    /* ——— lado izquierdo: título + contadores ——— */
+    const leftSpan = document.createElement('span');
+    leftSpan.textContent =
+      `${s.title} (Variantes: ${s.variants.length}) (Niños: ${ninosMes})`;
+
+    /* ——— lado derecho: botones de acción ——— */
+    const rightDiv = document.createElement('div');
+
+    if (s.title !== 'Matrícula') {
+      const btnEdit = document.createElement('button');
+      btnEdit.textContent = 'Editar';
+      btnEdit.onclick     = () => editService(s.id);
+      rightDiv.appendChild(btnEdit);
+    }
+
+    const btnMat = document.createElement('button');
+    btnMat.textContent = 'Administrar Niños';
+    btnMat.onclick     = () => openServiceChildren(s.id);
+    rightDiv.appendChild(btnMat);
+
+    if (s.title !== 'Matrícula') {
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.style.marginLeft = '5px';
+      btnDel.onclick = () => deleteService(s.id);
+      rightDiv.appendChild(btnDel);
+    }
+
+    div.appendChild(leftSpan);
+    div.appendChild(rightDiv);
+    container.appendChild(div);
+  });
+}
+
 function crearService() {
   // 1. Verificar si el usuario tiene permiso general para crear servicios
   if (!currentUser.permisos.services) {
@@ -2159,13 +2254,14 @@ function editService(serviceId) {
       });
     }
   }
-  function clearChildForm(){
-    editingServiceChildId = null;
-    document.getElementById('childName').value = '';
-    document.getElementById('childLastname').value = '';
-    document.getElementById('childDate').value = '';
-    document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
-  }
+function clearChildForm(){
+  editingServiceChildId = null;
+  document.getElementById('childName').value   = '';
+  document.getElementById('childLastname').value = '';
+  document.getElementById('childDay').value    = '';     // ←  antes era childDate
+  document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+}
+
 function renderChildrenTable(arr, mesKey = getYearMonth()) {
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
@@ -2238,98 +2334,127 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
 }
 
 
-  function agregarOguardarChild(){
-    if(!editingServiceId){
-      alert('No hay servicio seleccionado');
-      return;
-    }
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv) return;
-    const name = document.getElementById('childName').value.trim().toUpperCase();
-    const lastname = document.getElementById('childLastname').value.trim().toUpperCase();
-    const dateIn = document.getElementById('childDate').value;
-    const sel = document.getElementById('childVariantSelect');
-    let variantId = null;
-    if(sel.options.length === 1 && !sel.disabled){
-      variantId = parseInt(sel.options[0].value);
-    } else if(!sel.disabled){
-      variantId = parseInt(sel.value);
-    } else if(sel.disabled && serv.variants.length === 1){
-      variantId = serv.variants[0].id;
-    }
-    if(!name || !lastname || !dateIn){
-      alert('Completa todos los campos');
-      return;
-    }
-if(editingServiceChildId === null){
-  let precio = 0;
-  // Buscar la variante seleccionada según variantId obtenido del select
-  if(serv.variants && serv.variants.length > 0) {
-    let variant = serv.variants.find(v => v.id === variantId);
-    if(variant) {
-      precio = variant.price; // Asigna el precio de la variante
-    }
+function agregarOguardarChild(){
+  if(!editingServiceId){
+    alert('No hay servicio seleccionado');
+    return;
   }
-  const nuevo = {
-    id: nextServiceChildId++,
-    name,
-    lastname,
-    date: dateIn,
-    variantId,
-    mesRegistro: getYearMonth(), // Guarda el mes en que se registró
-    total: precio,              // Aquí se asigna el precio obtenido
-    ficha: {},
-    fichaCompleta: false,
-    pagoPension: false,         // Usaremos esta variable unificada para "Pagó Pensión/Mensualidad"
-    pensionesAtrasadas: 0,
-    lastPagoCheck: getYearMonth()
-  };
-  serv.children.push(nuevo);
-} else {
-  // En el caso de editar, actualizamos también el total:
-  const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
-  if(idx >= 0){
-    serv.children[idx].name = name;
-    serv.children[idx].lastname = lastname;
-    serv.children[idx].date = dateIn;
-    serv.children[idx].variantId = variantId;
-    let precio = 0;
-    if(serv.variants && serv.variants.length > 0) {
-      let variant = serv.variants.find(v => v.id === variantId);
-      if(variant) {
-        precio = variant.price;
-      }
-    }
-    serv.children[idx].total = precio;
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+
+  /* ---------- datos del formulario ---------- */
+  const name     = document.getElementById('childName').value.trim().toUpperCase();
+  const lastname = document.getElementById('childLastname').value.trim().toUpperCase();
+  const day      = document.getElementById('childDay').value.trim();      // ← solo día
+  const sel      = document.getElementById('childVariantSelect');
+
+  let variantId = null;
+  if(!sel.disabled)      variantId = parseInt(sel.value);
+  else if(serv.variants.length===1) variantId = serv.variants[0].id;
+
+  if(!name || !lastname || !day){
+    alert('Completa todos los campos');
+    return;
   }
-  editingServiceChildId = null;
-  document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+
+  /* ①  mes elegido en el combo “Mes” */
+  const mesSel = document.getElementById('servicesMes').value;   // "YYYY‑MM"
+
+  /* ②  fecha completa y rango de meses a generar */
+  const dateIn = `${mesSel}-${String(parseInt(day)).padStart(2,'0')}`;
+
+  const pagoPorMes = {};
+  let [y,m] = mesSel.split('-').map(Number);
+  const [cy,cm] = getYearMonth().split('-').map(Number);
+  while (y<cy || (y===cy && m<=cm)){
+    const key = `${y}-${String(m).padStart(2,'0')}`;
+    pagoPorMes[key] = false;           // aún no pagado
+    m++; if(m===13){m=1; y++;}
+  }
+  const mesesGenerados = Object.keys(pagoPorMes).length;
+
+  /* ③  creación o edición */
+  if(editingServiceChildId === null){
+    const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
+    serv.children.push({
+      id : nextServiceChildId++,
+      name, lastname,
+      date : dateIn,
+      variantId,
+      mesRegistro : mesSel,
+      mesBaja     : null,
+      total       : precio,
+      ficha       : {},
+      fichaCompleta : false,
+      pagoPorMes,
+      pensionesAtrasadas : mesesGenerados,
+      lastPagoCheck : getYearMonth()
+    });
+  }else{
+    const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
+    if(idx >= 0){
+      const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
+      Object.assign(serv.children[idx],{
+        name, lastname,
+        date : dateIn,
+        variantId,
+        total: precio
+      });
+    }
+    editingServiceChildId = null;
+    document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+  }
+
+  clearChildForm();
+  renderChildrenTable(serv.children, mesSel);
+  saveToFirebaseServices();
 }
 
-    clearChildForm();
-    renderChildrenTable(serv.children);
-    saveToFirebaseServices();
-  }
-  function editServiceChild(childId){
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv) return;
-    const ch = serv.children.find(c => c.id === childId);
-    if(!ch) return;
-    editingServiceChildId = childId;
-    document.getElementById('childName').value = ch.name;
-    document.getElementById('childLastname').value = ch.lastname;
-    document.getElementById('childDate').value = ch.date;
-    document.getElementById('btnChildPrincipal').textContent = 'Guardar Niño';
-    const sel = document.getElementById('childVariantSelect');
-    if(!sel.disabled && ch.variantId) sel.value = ch.variantId;
-  }
-  function deleteServiceChild(childId){
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv) return;
-    serv.children = serv.children.filter(c => c.id !== childId);
-    renderChildrenTable(serv.children);
-    saveToFirebaseServices();
-  }
+function editServiceChild(childId){
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+  const ch = serv.children.find(c => c.id === childId);
+  if(!ch) return;
+
+  editingServiceChildId = childId;
+
+  document.getElementById('childName').value      = ch.name;
+  document.getElementById('childLastname').value  = ch.lastname;
+
+  /* mostramos solo el día (dd) */
+  const [, , dd] = ch.date.split('-');            // "YYYY‑MM‑DD"
+  document.getElementById('childDay').value = parseInt(dd,10);
+
+  /* variante */
+  const sel = document.getElementById('childVariantSelect');
+  if(!sel.disabled && ch.variantId) sel.value = ch.variantId;
+
+  document.getElementById('btnChildPrincipal').textContent = 'Guardar Niño';
+}
+
+function deleteServiceChild(childId){
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+
+  const ch = serv.children.find(c => c.id === childId);
+  if(!ch) return;
+
+  // mes visible en el selector «Mes:»
+  const mesActual = document.getElementById('servicesMes').value || getYearMonth();
+
+  if(!confirm(`Dar de baja a ${ch.name} a partir de ${mesActual}?`)) return;
+
+  /* ⇢ Queremos que todavía aparezca en el mes que estamos viendo
+     y desaparezca desde el siguiente.                          */
+  let [yy, mm] = mesActual.split('-').map(Number);
+  mm++; if(mm === 13){ mm = 1; yy++; }
+
+  ch.mesBaja = mesActual;            // deja de mostrarse en el mes actual
+
+saveToFirebaseServices();
+renderChildrenTable(serv.children, mesActual);
+}
+
   function doneChildren(){
     openTabServices('ServicesMain');
     showServicesList();
@@ -2405,10 +2530,13 @@ function initSelectorMes(idSelect){
   });
   }
 function cambiarMesServices(){
-  const serv = services.find(s => s.id === editingServiceId);
-  if(serv){
-    const mesSel = document.getElementById('servicesMes').value;
-    renderChildrenTable(serv.children, mesSel);
+  const serv   = services.find(s => s.id === editingServiceId);
+  const mesSel = document.getElementById('servicesMes').value;
+  if(serv) renderChildrenTable(serv.children, mesSel);
+
+  /* si el selector de días está abierto, lo redibujamos */
+  if(!document.getElementById('dayPicker').classList.contains('hidden')){
+    openDayPicker();
   }
 }
 
@@ -3746,6 +3874,7 @@ function filtrarIngresos() {
     window.cambiarMesServices = cambiarMesServices
     window.cambiarMesMatriculas = cambiarMesMatriculas
     window.filterMatriculasBySearch = filterMatriculasBySearch;
+    window.openDayPicker = openDayPicker
   });
 </script>
 </body>
