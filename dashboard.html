@@ -479,6 +479,129 @@
       padding: 6px 10px;
       outline: none;
     }
+button.matriculas-btn,
+button.day-btn,
+#macrosContainer .actions button,
+#servicesContainer .actions button,
+.finanzas-form button,
+.bottom-left-btn,
+#logoutContainer button,
+.ficha-btn,
+.pension-btn {
+  margin:6px;                 /* 6 px en los 4 lados */
+}
+
+/* ═════════════════════ MATRÍCULAS – botón «Aplicar Filtro» ═══════════════════ */
+#matriculasContainer .matriculas-header button,
+#matriculasContainer .matriculas-header .matriculas-btn{   /* te cubre las 2 formas */
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:8px 22px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s, box-shadow .2s;
+}
+#matriculasContainer .matriculas-header button:hover{
+  background:#1a2e55;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+
+/* ═════════════════════ MACROS – botón «Agregar Niño / Guardar Niño» ═══════════ */
+#macrosContainer .form-section button{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:10px 10px;
+  margin: 6px 0px 0px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#macrosContainer .form-section button:hover{background:#1a2e55;}
+
+/* ═════════════════════ SERVICIOS – botones «Listo» (Variants & Children) ══════ */
+#servicesContainer .actions button{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:10px 26px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#servicesContainer .actions button:hover{background:#1a2e55;}
+
+/* ═════════════════════ USUARIOS – recuadros y botones ═════════════════════════ */
+#usersContainer #usersList .user-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#f9fbff;
+  border:1px solid #e0e6f0;
+  border-radius:8px;
+  padding:10px 14px;
+  margin-bottom:8px;
+}
+#usersContainer #usersList .user-item button,
+#usersContainer input[type="text"],
+#usersContainer input[type="password"]{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:8px 18px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#usersContainer #usersList .user-item button:hover{background:#1a2e55;}
+#usersContainer input[type="text"],
+#usersContainer input[type="password"]{
+  background:#fff;
+  color:#1a2e55;
+  border:1px solid #ccd3e6;
+  font-weight:400;
+  padding:8px 12px;
+}
+
+/* ═════════════════════ FINANZAS – filtros y recuadros de “Agregar” ════════════ */
+#finanzasContainer .finanzas-form{
+  background:#f9fbff;
+  border:1px solid #e0e6f0;
+  border-radius:8px;
+  padding:14px 20px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px 20px;
+}
+#finanzasContainer .finanzas-form label{font-weight:600;color:#1a2e55;}
+#finanzasContainer .finanzas-form select,
+#finanzasContainer .finanzas-form input{
+  padding:8px 12px;
+  border:1px solid #ccd3e6;
+  border-radius:6px;
+  background:#fff;
+  font-size:.95rem;
+}
+#finanzasContainer .finanzas-form button{
+  background:#4a90e2;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:8px 22px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background-color .2s;
+}
+#finanzasContainer .finanzas-form button:hover{background:#1a2e55;}
+/* Botoncitos + / – compactos */
+#finanzasContainer .finanzas-form button[type="button"]{
+  width:34px; padding:6px 0;
+}
 
 
     /* =================== FICHA INFORMATIVA =================== */
@@ -534,7 +657,20 @@
     .edit-section-btn:hover {
       background-color: #1a2e55;
     }
-
+.listo-btn{
+  background:#f1c40f;
+  color:#1a2e55;
+  border:none;
+  border-radius:6px;
+  padding:6px 16px;         /* más delgado */
+  font-weight:600;
+  font-size:.9rem;          /* un poco menor */
+  cursor:pointer;
+  transition:background-color .2s;
+}
+.listo-btn:hover{
+  background:#d9ae0a;       /* tono más oscuro al pasar */
+}
     /* =================== ESTILOS ADMIN FINANZAS =================== */
     /* Contenedor para Finanzas */
     #finanzasContainer {
@@ -790,7 +926,7 @@
       <tbody id="tbodyVariants"></tbody>
     </table>
     <div class="actions">
-      <button onclick="doneVariants()">Listo</button>
+      <button class="listo-btn" onclick="doneChildren()">Listo</button>
     </div>
   </div>
 <div class="tab-content" id="contentServicesChildren">
@@ -873,7 +1009,7 @@
       <option value="SI">Sí</option>
       <option value="NO">No</option>
     </select>
-    <button onclick="filtrarMatriculas()">Aplicar Filtro</button>
+    <button class="matriculas-btn" onclick="filtrarMatriculas()">Aplicar Filtro</button>
   </div>
 <div class="matriculas-search">
 <input
@@ -1164,6 +1300,7 @@ if (!currentUser.username) {
    * Global Variables and Screen Navigation
    *************************************************************/
   let screenStack = ["landing"];
+  let updatingFromFirestore = false;
   let childrenSearchTerm = '';
   let matriculasSearchTerm = '';
   let users = [];
@@ -1330,15 +1467,19 @@ function daysInSelectedMonth(){
 }
 function actualizarResumenMensual(mesKey){
   finanzasData.resumenMensual[mesKey] = {
-    brutoEsperado  : calcularIngresosBrutoEsperado(mesKey),
-    netoEsperado   : calcularIngresosNetoEsperado(mesKey),
-    brutoTotales   : calcularIngresosBrutosTotales(mesKey),
-    netoTotales    : calcularIngresosNetosTotales(mesKey),
-    egresosTotales : calcularEgresosTotales(
-                       finanzasData.egresos.filter(e =>
-                         `${e.anio}-${String(e.mes).padStart(2,'0')}`===mesKey))
+    brutoEsperado : calcularIngresosBrutoEsperado(mesKey),
+    netoEsperado  : calcularIngresosNetoEsperado(mesKey),
+    brutoTotales  : calcularIngresosBrutosTotales(mesKey),
+    netoTotales   : calcularIngresosNetosTotales(mesKey),
+    egresosTotales: calcularEgresosTotales(
+                      finanzasData.egresos.filter(e =>
+                        `${e.anio}-${String(e.mes).padStart(2,'0')}`===mesKey))
   };
-  saveFinanzasData();                 // persistir en Firebase
+
+  /* 👇 Sólo guarda si la llamada viene de una acción del usuario */
+  if(!updatingFromFirestore){
+    saveFinanzasData();
+  }
 }
 
 function childIsActiveInMonth(child, mesKey){
@@ -3002,13 +3143,14 @@ function openTabFinanzas(tabName) {
   }
 }
 
-function initFinanzasRealTime() {
-  const docRef = doc(db, "data", "finanzas");
-  onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
+function initFinanzasRealTime(){
+  const docRef = doc(db,"data","finanzas");
+  onSnapshot(docRef,(docSnap)=>{
+    if(docSnap.exists()){
+      updatingFromFirestore = true;             // ← ❶ encendemos el flag
       finanzasData = docSnap.data();
-      // cada vez que hay un cambio, re-renderizas la parte de finanzas
-      renderFinanzas();
+      renderFinanzas();                         // ← ❷
+      updatingFromFirestore = false;            // ← ❸ lo apagamos
     }
   });
 }
@@ -3637,13 +3779,11 @@ function showUsersList(){
   const container = document.getElementById('usersList');
   container.innerHTML = '';
   users.forEach(u => {
-    const div = document.createElement('div');
-    div.style.display = 'flex';
-    div.style.justifyContent = 'space-between';
-    div.style.border = '1px solid #ccc';
-    div.style.borderRadius = '6px';
-    div.style.padding = '6px';
-    div.style.marginBottom = '5px';
+      const div = document.createElement('div');
+    div.className = 'user-item';   // NUEVO: aplica la clase CSS
+    // ─── y elimina (o comenta) las 6 líneas style.* ───
+
+
 
     const leftSpan = document.createElement('span');
     leftSpan.textContent = `Usuario: ${u.username}`;
@@ -3896,7 +4036,6 @@ function filtrarIngresos() {
     window.cambiarMesMatriculas = cambiarMesMatriculas
     window.filterMatriculasBySearch = filterMatriculasBySearch;
     window.openDayPicker = openDayPicker
-    window.matServ = matServ
   });
 </script>
 </body>
