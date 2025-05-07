@@ -377,10 +377,12 @@
 /* ========= Matrículas › cabecera de filtros ========= */
 /* ===== Matrículas › barra de búsqueda ===== */
 #matriculasContainer .matriculas-search{
-  margin:22px 0 14px;
   display:flex;
   gap:10px;
   max-width:600px; 
+  margin: 0 0 24px;              /* “24” = separación con la tabla */
+  padding: 0 20px;               /* coincide con el padding lateral del contenedor */
+  gap: 14px;     
 }
 #matriculasContainer .matriculas-search input{
   padding:10px 14px;
@@ -414,6 +416,9 @@
   border-radius:8px;
   padding:12px 18px;
   margin-bottom:18px;
+  margin: 20px 20px 20px;              /* separamos del search‑bar      */
+  padding: 16px 20px;            /* aire respecto a su propio borde */
+  gap: 14px 24px;  
 }
 
 #matriculasContainer .matriculas-header label{
@@ -649,6 +654,7 @@
       width: 100%;
       max-width: 400px;
       margin: 0 auto 20px;
+} 
 .ficha-btn,
 .pension-btn{
   color:#fff !important;     /* texto siempre blanco */
@@ -3375,63 +3381,78 @@ btnP.style.color           = '#fff';
   });
 }
 
-  function filtrarMatriculas(){
-  const mesKey     = document.getElementById('filtroMesMatriculas').value || getYearMonth();   // ✅
-  const valAno     = document.getElementById('filtroAno').value;
-  const valPension = document.getElementById('filtroPension').value;
-    if(!matServ) return;
-    let arr = [...matServ.children];
-    if(valAno){
-      arr = arr.filter(ch => getVariantName(ch.variantId) === valAno);
-    }
-  if(valPension === 'SI'){
+/* ==========================================================
+   Filtro de la tabla de Matrículas
+   ========================================================== */
+function filtrarMatriculas () {
+  /* servicio “Matrícula” */
+  const matServ = services.find(s => s.title === 'Matrícula');
+  if (!matServ) return;
+
+  const mesKey      = document.getElementById('filtroMesMatriculas').value || getYearMonth();
+  const valAno      = document.getElementById('filtroAno').value;          // 1,2,3,4,5 ó ""
+  const valPension  = document.getElementById('filtroPension').value;      // "SI","NO" ó ""
+
+  /* ------------ filtros ---------------- */
+  let arr = matServ.children.filter(ch => childIsActiveInMonth(ch, mesKey));
+
+  if (valAno) {                       // año escolar
+    arr = arr.filter(ch => getVariantName(ch.variantId) === valAno);
+  }
+
+  if (valPension === 'SI') {          // adeudan pensión
     arr = arr.filter(ch => !ch.pagoPorMes?.[mesKey] || (ch.pensionesAtrasadas > 0));
-  }else if(valPension === 'NO'){
+  } else if (valPension === 'NO') {   // al día
     arr = arr.filter(ch =>  ch.pagoPorMes?.[mesKey] && (ch.pensionesAtrasadas === 0));
   }
-    const tbody = document.getElementById('tbodyMatriculas');
-    tbody.innerHTML = '';
-    arr.forEach(ch => {
-      const row = tbody.insertRow();
-      row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
-      row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
-      const cellF = row.insertCell(2);
-      const btnF = document.createElement('button');
-      btnF.className = 'ficha-btn';
-      btnF.style.fontWeight = '600';
-      btnF.style.borderRadius = '8px';
-      btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
-      btnF.style.color = '#fff';
-      btnF.textContent = 'Ficha Informativa';
-      btnF.onclick = () => openFicha(ch);
-      cellF.appendChild(btnF);
-      const cellP = row.insertCell(3);
-      const btnP = document.createElement('button');
-      btnP.className = 'pension-btn';
-      btnP.style.fontWeight = '600';
-      btnP.style.borderRadius = '8px';
-      btnP.style.color = '#fff';
-      btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-      btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-      btnP.onclick = () => {
-        ch.pagoPension = !ch.pagoPension;
-        btnP.style.backgroundColor = ch.pagoPension ? '#3BB273' : '#E74C3C';
-        btnP.textContent = ch.pagoPension ? 'Sí' : 'No';
-        saveToFirebaseServices();
-      };
-      cellP.appendChild(btnP);
-      const cellA = row.insertCell(4);
-      const inputA = document.createElement('input');
-      inputA.type = 'number';
-      inputA.style.width = '60px';
-      inputA.value = ch.pensionesAtrasadas || 0;
-      inputA.onchange = () => {
-        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
-        saveToFirebaseServices();
-      };
-      cellA.appendChild(inputA);
-    });
-  }
+
+  /* ------------ pintamos la tabla --------------- */
+  const tbody = document.getElementById('tbodyMatriculas');
+  tbody.innerHTML = '';
+
+  arr.forEach(ch => {
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = `${ch.lastname} ${ch.name}`;
+    row.insertCell(1).textContent = getVariantName(ch.variantId) || '';
+
+    /* — Ficha Informativa — */
+    const cellF = row.insertCell(2);
+    const btnF  = document.createElement('button');
+    btnF.className           = 'ficha-btn';
+    btnF.style.backgroundColor = ch.fichaCompleta ? '#3BB273' : '#E74C3C';
+    btnF.textContent         = 'Ficha Informativa';
+    btnF.onclick             = () => openFicha(ch);
+    cellF.appendChild(btnF);
+
+    /* — Pagó pensión mesKey — */
+    const cellP   = row.insertCell(3);
+    const pagado  = !!ch.pagoPorMes?.[mesKey];
+    const btnP    = document.createElement('button');
+    btnP.className           = 'pension-btn';
+    btnP.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
+    btnP.textContent         = pagado ? 'Sí' : 'No';
+    btnP.onclick = () => {
+      if (!ch.pagoPorMes) ch.pagoPorMes = {};
+      ch.pagoPorMes[mesKey] = !pagado;
+      saveToFirebaseServices();
+      filtrarMatriculas();           // refrescar vista
+    };
+    cellP.appendChild(btnP);
+
+    /* — Pensiones atrasadas — */
+    const cellA = row.insertCell(4);
+    const inputA = document.createElement('input');
+    inputA.type        = 'number';
+    inputA.style.width = '60px';
+    inputA.value       = ch.pensionesAtrasadas || 0;
+    inputA.onchange = () => {
+      ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+      saveToFirebaseServices();
+    };
+    cellA.appendChild(inputA);
+  });
+}
+
 async function loadUsersFromFirebase(){
   // Leemos todos los docs de la colección "users"
   const ref = collection(db, "users");
@@ -3875,6 +3896,7 @@ function filtrarIngresos() {
     window.cambiarMesMatriculas = cambiarMesMatriculas
     window.filterMatriculasBySearch = filterMatriculasBySearch;
     window.openDayPicker = openDayPicker
+    window.matServ = matServ
   });
 </script>
 </body>
