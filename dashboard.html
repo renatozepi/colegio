@@ -731,6 +731,71 @@ button.day-btn,
       font-size: 1.1rem;
       font-weight: 600;
     }
+/* Contenedor del dropdown */
+.custom-dropdown {
+  position: relative;
+  display: inline-block;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* La caja que muestra la opción seleccionada */
+.custom-dropdown .selected {
+  background-color: #eee;
+  color: #333;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  min-width: 100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Flecha */
+.custom-dropdown .selected::after {
+  content: '▾';
+  margin-left: 8px;
+  font-size: 0.8em;
+}
+
+/* Contenedor de las opciones */
+.custom-dropdown .options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ccd3e6;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  z-index: 100;
+  overflow: hidden;
+  display: none; /* se muestra al abrir */
+}
+
+/* Cada opción */
+.custom-dropdown .option {
+  background: #f9f9f9;
+  margin: 4px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  /* ligero aumento */
+  transform: scale(1);
+  transition: transform 0.1s ease;
+}
+.custom-dropdown .option:active {
+  transform: scale(1.05);
+}
+/* Color fijo según tipo */
+.custom-dropdown .option.no      { background: #E74C3C; color: #fff; }
+.custom-dropdown .option.yes     { background: #3BB273; color: #fff; }
+.custom-dropdown .option.partial { background: #4a90e2; color: #fff; }
+
     /* Indicador de porcentaje */
     .finanzas-indicador {
       margin-top: 20px;
@@ -2409,6 +2474,114 @@ function clearChildForm(){
   document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
 }
 
+// Mapeo para mostrar etiquetas
+const PagoMapping = {
+  no: 'No',
+  yes: 'Sí',
+  partial: 'Parcial'
+};
+
+/**
+ * Crea un dropdown custom con opciones estilizadas y hover.
+ * @param {string} currentVal – 'yes' | 'no' | 'partial'
+ * @param {Array<{value:string,label:string,cls:string}>} opts
+ * @param {function(string)} onChange
+ * @returns {HTMLDivElement}
+ */
+function createCustomDropdown(currentVal, opts, onChange) {
+  const colorMap = { yes:'#3BB273', no:'#E74C3C', partial:'#4a90e2' };
+  
+  // contenedor
+  const wrapper = document.createElement('div');
+  Object.assign(wrapper.style, {
+    position: 'relative', display: 'inline-block'
+  });
+
+  // caja seleccionada
+  const sel = document.createElement('div');
+  sel.textContent = PagoMapping[currentVal];
+  Object.assign(sel.style, {
+    backgroundColor: colorMap[currentVal],
+    color: '#fff',
+    padding: '10px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    minWidth: '100px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '1rem',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+  });
+  const arrow = document.createElement('span');
+  arrow.textContent = '▾';
+  arrow.style.marginLeft = '8px';
+  arrow.style.fontSize   = '0.8em';
+  sel.appendChild(arrow);
+  wrapper.appendChild(sel);
+
+  // lista de opciones
+  const list = document.createElement('div');
+  Object.assign(list.style, {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    left: 0, right: 0,
+    background: '#fff',
+    border: '1px solid #ccd3e6',
+    borderRadius: '6px',
+    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+    zIndex: 100,
+    display: 'none',
+    padding: '8px 0'
+  });
+
+  opts.forEach(o => {
+    const div = document.createElement('div');
+    div.textContent = o.label;
+    Object.assign(div.style, {
+      backgroundColor: colorMap[o.value],
+      color: '#fff',
+      margin: '4px 12px',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      textAlign: 'center',
+      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    });
+    div.onmouseenter = () => {
+      div.style.transform = 'scale(1.1)';
+      div.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+    };
+    div.onmouseleave = () => {
+      div.style.transform = 'scale(1)';
+      div.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    };
+    div.onmousedown = e => {
+      e.stopPropagation();
+      sel.textContent = o.label;
+      sel.style.backgroundColor = colorMap[o.value];
+      list.style.display = 'none';
+      onChange(o.value);
+    };
+    list.appendChild(div);
+  });
+
+  wrapper.appendChild(list);
+
+  sel.onclick = e => {
+    e.stopPropagation();
+    list.style.display = list.style.display === 'block' ? 'none' : 'block';
+  };
+  document.addEventListener('click', () => list.style.display = 'none');
+
+  return wrapper;
+}
+
+/**
+ * Renderiza la tabla de niños en Servicios, usando el dropdown custom.
+ */
 function renderChildrenTable(arr, mesKey = getYearMonth()) {
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
@@ -2416,70 +2589,124 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
   const serv = services.find(s => s.id === editingServiceId);
   if (!serv) return;
 
-  /* --- filtros: mes activo y, si existe, búsqueda por nombre --- */
-  const filtered = arr
+  arr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
-    .filter(ch => {
-      if (!childrenSearchTerm) return true;        // variable global
-      const fullName = (ch.name + ' ' + ch.lastname).toLowerCase();
-      return fullName.includes(childrenSearchTerm);
+    .filter(ch => !childrenSearchTerm || (ch.name + ' ' + ch.lastname)
+      .toLowerCase().includes(childrenSearchTerm))
+    .forEach(ch => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = ch.name;
+      row.insertCell(1).textContent = ch.lastname;
+      row.insertCell(2).textContent = ch.date;
+      const variant = serv.variants.find(v => v.id === ch.variantId);
+      row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
+
+      // Pagó pensión
+      const cellPago = row.insertCell(4);
+      cellPago.style.textAlign = 'center';
+      const pagoVal = ch.partialPayments?.[mesKey] != null
+        ? 'partial'
+        : (ch.pagoPorMes?.[mesKey] ? 'yes' : 'no');
+
+      const options = [
+        { value:'no',      label:'No',      cls:'no' },
+        { value:'yes',     label:'Sí',      cls:'yes' },
+        { value:'partial', label:'Parcial', cls:'partial' }
+      ];
+
+      const dropdown = createCustomDropdown(pagoVal, options, val => {
+        if (val === 'yes') {
+          ch.pagoPorMes[mesKey] = true;
+          delete ch.partialPayments?.[mesKey];
+        } else if (val === 'no') {
+          ch.pagoPorMes[mesKey] = false;
+          delete ch.partialPayments?.[mesKey];
+        } else {
+          if (!ch.partialPayments) ch.partialPayments = {};
+          ch.partialPayments[mesKey] = ch.partialPayments[mesKey] || 0;
+        }
+        saveToFirebaseServices();
+        renderChildrenTable(arr, mesKey);
+      });
+      cellPago.appendChild(dropdown);
+
+      // Input parcial si corresponde
+      if (pagoVal === 'partial') {
+        const inputMonto = document.createElement('input');
+        inputMonto.type  = 'number';
+        inputMonto.value = ch.partialPayments[mesKey];
+        Object.assign(inputMonto.style, {
+          width:        '100px',
+          border:       '1px solid #ccd3e6',
+          borderRadius: '6px',
+          padding:      '10px 12px',
+          fontSize:     '1rem',
+          textAlign:    'center',
+          display:      'block',
+          margin:       '8px auto 0'
+        });
+        inputMonto.onchange = () => {
+          const amt = parseFloat(inputMonto.value) || 0;
+          ch.partialPayments[mesKey] = amt;
+          if (amt >= ch.total) {
+            ch.pagoPorMes[mesKey] = true;
+            delete ch.partialPayments[mesKey];
+          } else {
+            ch.pagoPorMes[mesKey] = false;
+          }
+          saveToFirebaseServices();
+          renderChildrenTable(arr, mesKey);
+        };
+        cellPago.appendChild(inputMonto);
+      }
+
+      // Pensiones atrasadas
+      const cellA = row.insertCell(5);
+      cellA.style.textAlign = 'center';
+      const inputA = document.createElement('input');
+      inputA.type = 'number';
+      inputA.value = ch.pensionesAtrasadas || 0;
+      Object.assign(inputA.style, {
+        width:        '80px',
+        border:       '1px solid #ccd3e6',
+        borderRadius: '6px',
+        padding:      '10px 12px',
+        fontSize:     '1rem',
+        textAlign:    'center',
+        margin:       '0'
+      });
+      inputA.onchange = () => {
+        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+        saveToFirebaseServices();
+      };
+      cellA.appendChild(inputA);
+
+      // Acciones
+      const accCell = row.insertCell(6);
+      accCell.style.textAlign = 'center';
+      ['✎','🗑️'].forEach((icon, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = icon;
+        Object.assign(btn.style, {
+          background:   i===0 ? '#4a90e2' : '#E74C3C',
+          color:        '#fff',
+          border:       'none',
+          borderRadius: '4px',
+          width:        '28px',
+          height:       '28px',
+          fontSize:     '1rem',
+          margin:       '0 4px',
+          lineHeight:   '1',
+          cursor:       'pointer'
+        });
+        btn.onclick = () => {
+          if (i===0) editServiceChild(ch.id);
+          else       deleteServiceChild(ch.id);
+        };
+        accCell.appendChild(btn);
+      });
     });
-
-  /* --- pintamos la tabla --- */
-  filtered.forEach(ch => {
-    const row = tbody.insertRow();
-
-    row.insertCell(0).textContent = ch.name;
-    row.insertCell(1).textContent = ch.lastname;
-    row.insertCell(2).textContent = ch.date;
-
-    const variant = serv.variants.find(v => v.id === ch.variantId);
-    row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
-
-    /* ========= Columna “Pagó pensión” ========= */
-    const cellPago = row.insertCell(4);
-    const pagado = !!ch.pagoPorMes?.[mesKey];
-    const btnPago = document.createElement('button');
-    btnPago.textContent = pagado ? 'Sí' : 'No';
-    btnPago.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
-    btnPago.style.color = '#fff';
-    btnPago.style.border = 'none';
-    btnPago.style.borderRadius = '6px';
-    btnPago.style.padding = '6px 10px';
-    btnPago.onclick = () => {
-      ch.pagoPorMes[mesKey] = !pagado;
-      saveToFirebaseServices();
-      renderChildrenTable(arr, mesKey);   // refresca la vista
-    };
-    cellPago.appendChild(btnPago);
-
-    /* ========= Columna “Pensiones atrasadas” ========= */
-    const cellAtraso = row.insertCell(5);
-    const inputA = document.createElement('input');
-    inputA.type = 'number';
-    inputA.style.width = '60px';
-    inputA.value = ch.pensionesAtrasadas || 0;
-    inputA.onchange = () => {
-      ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
-      saveToFirebaseServices();
-    };
-    cellAtraso.appendChild(inputA);
-
-    /* ========= Columna “Acciones” ========= */
-    const accCell = row.insertCell(6);
-    const btnEd = document.createElement('button');
-    btnEd.textContent = '✎';
-    btnEd.onclick = () => editServiceChild(ch.id);
-    accCell.appendChild(btnEd);
-
-    const btnDel = document.createElement('button');
-    btnDel.textContent = '🗑️';
-    btnDel.style.marginLeft = '5px';
-    btnDel.onclick = () => deleteServiceChild(ch.id);
-    accCell.appendChild(btnDel);
-  });
 }
-
 
 function agregarOguardarChild(){
   if(!editingServiceId){
