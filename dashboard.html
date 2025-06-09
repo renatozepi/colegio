@@ -9,7 +9,7 @@
 
   <!-- Chart.js (para gráficos en el menú de Finanzas) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     /* =================== ESTILOS GENERALES =================== */
 #logoutContainer {
@@ -1385,6 +1385,134 @@ async function goToMacros() {
   // Carga de datos y demás
   await initMacros();
 }
+// 2) Autoajusta el ancho de columnas
+function autoFitColumns(ws, data) {
+  const cols = [];
+  const headers = Object.keys(data[0] || {});
+  headers.forEach((h, i) => {
+    let maxLen = h.length;
+    data.forEach(row => {
+      const v = row[h] != null ? row[h].toString() : '';
+      if (v.length > maxLen) maxLen = v.length;
+    });
+    cols[i] = { wch: maxLen + 2 };
+  });
+  ws['!cols'] = cols;
+}
+
+// 3) Estiliza encabezados y celdas
+function styleSheet(ws, data) {
+  const headerRow = 0;
+  const headers = Object.keys(data[0] || {});
+  headers.forEach((h, i) => {
+    const addr = XLSX.utils.encode_cell({ r: headerRow, c: i });
+    const cell = ws[addr];
+    if (cell) cell.s = {
+      fill:      { patternType: "solid", fgColor: { rgb: "FFFF00" } },
+      font:      { bold: true },
+      alignment: { horizontal: "left", vertical: "center" }
+    };
+  });
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = 1; R <= range.e.r; ++R) {
+    for (let C = 0; C <= range.e.c; ++C) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (cell) {
+        cell.s = cell.s || {};
+        cell.s.alignment = { horizontal: "left", vertical: "center" };
+        if (typeof cell.v === "number") cell.s.numFmt = "#,##0.00";
+      }
+    }
+  }
+}
+
+// 4) Exporta Histórico o Actual, incluyendo deuda por atrasos y parciales
+function exportServiceExcel(type) {
+  const serv = services.find(s => s.id === editingServiceId);
+  if (!serv) return;
+  const currentYM = getYearMonth();
+
+  let children = serv.children;
+  if (type === 'Actual') {
+    children = children.filter(ch => childIsActiveInMonth(ch, currentYM));
+  }
+
+  const rows = children.map(ch => {
+    // Meses pagados
+    const paidFull = Object.entries(ch.pagoPorMes || {})
+                           .filter(([m,v]) => v).map(([m]) => m);
+    const paidPart = Object.keys(ch.partialPayments || {});
+    const mesesPag = Array.from(new Set([...paidFull, ...paidPart]))
+                          .sort().join(', ');
+
+    // Deuda de parciales registrados
+    const partialDebt = Object.values(ch.deudaPorMes || {})
+                             .reduce((sum,v) => sum + v, 0);
+    // Deuda por pensiones atrasadas
+    const overdueDebt = (ch.pensionesAtrasadas || 0) * (ch.total || 0);
+    const totalDebt   = partialDebt + overdueDebt;
+
+    // Dinero efectivamente pagado
+    let paidSum = 0;
+    Object.values(ch.partialPayments || {}).forEach(p => paidSum += p);
+    Object.entries(ch.pagoPorMes || {}).forEach(([m,v]) => {
+      if (v) paidSum += ch.total || 0;
+    });
+
+    return {
+      'Nombre y Apellidos':           `${ch.name} ${ch.lastname}`,
+      'Fecha de Ingreso':             ch.date,
+      'Meses que ha pagado pensión':  mesesPag,
+      'Deuda actual (S/)':            totalDebt,
+      'Pensiones atrasadas':          ch.pensionesAtrasadas || 0,
+      'Dinero total pagado (S/)':     paidSum
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  if (rows.length) {
+    const ws = XLSX.utils.json_to_sheet(rows, { header: Object.keys(rows[0]) });
+    autoFitColumns(ws, rows);
+    styleSheet(ws, rows);
+    XLSX.utils.book_append_sheet(wb, ws, type);
+  }
+
+  const hoy = new Date();
+  const fecha = `${hoy.getDate().toString().padStart(2,'0')}-${(hoy.getMonth()+1).toString().padStart(2,'0')}-${hoy.getFullYear()}`;
+  const filename = `${type} - ${serv.title} - ${fecha}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+// 5) Wrappers de llamada
+function exportServiceHistoric() { exportServiceExcel('Histórico'); }
+function exportServiceCurrent()  { exportServiceExcel('Actual'); }
+
+// 6) Añade los botones al pie de “Administrar Niños”
+function addExportButtons() {
+  const actions = document.querySelector('#contentServicesChildren .actions');
+  if (!actions) return;
+  actions.style.justifyContent = 'flex-start';
+
+  [
+    ['Exportar Histórico', exportServiceHistoric],
+    ['Exportar Actual',    exportServiceCurrent ]
+  ].forEach(([text, cb]) => {
+    const btn = document.createElement('button');
+    btn.textContent = text;
+    btn.classList.add('listo-btn');
+    Object.assign(btn.style, {
+      textAlign: 'left',
+      alignSelf: 'flex-start',
+      margin:    '0 8px 0 0'
+    });
+    btn.onclick = cb;
+    actions.appendChild(btn);
+  });
+}
+
+// 7) Ejecutar al cargar
+document.addEventListener('DOMContentLoaded', addExportButtons);
 
   async function loadFinanzasData() {
   try {
