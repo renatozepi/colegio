@@ -1572,18 +1572,24 @@ function calcularIngresosBrutoEsperado(mesKey){
   return total;
 }
 
-function calcularIngresosBrutosTotales(mes){
+function calcularIngresosBrutosTotales(mesKey) {
   let total = 0;
-  services.forEach(s=>{
-    s.children.forEach(c=>{
-      if(childIsActiveInMonth(c,mes) && c.pagoPorMes?.[mes]){
+  services.forEach(serv => {
+    serv.children.forEach(c => {
+      if (!childIsActiveInMonth(c, mesKey)) return;
+
+      const parc = c.partialPayments?.[mesKey];
+      if (parc != null) {
+        // si hay pago parcial, lo sumamos
+        total += parc;
+      } else if (c.pagoPorMes?.[mesKey]) {
+        // si marcó Sí, sumamos el total completo
         total += c.total || 0;
       }
     });
   });
   return total;
 }
-
 function calcularIngresosNetoEsperado(mesKey){
   return calcularIngresosBrutoEsperado(mesKey) -
          calcularEgresosTotales(finanzasData.egresos
@@ -2591,8 +2597,8 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
 
   arr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
-    .filter(ch => !childrenSearchTerm || (ch.name + ' ' + ch.lastname)
-      .toLowerCase().includes(childrenSearchTerm))
+    .filter(ch => !childrenSearchTerm ||
+      (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm))
     .forEach(ch => {
       const row = tbody.insertRow();
       row.insertCell(0).textContent = ch.name;
@@ -2601,20 +2607,20 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
       const variant = serv.variants.find(v => v.id === ch.variantId);
       row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
 
-      // Pagó pensión
+      // ─── “Pagó pensión” ───────────────────────────
       const cellPago = row.insertCell(4);
       cellPago.style.textAlign = 'center';
       const pagoVal = ch.partialPayments?.[mesKey] != null
         ? 'partial'
         : (ch.pagoPorMes?.[mesKey] ? 'yes' : 'no');
 
-      const options = [
-        { value:'no',      label:'No',      cls:'no' },
-        { value:'yes',     label:'Sí',      cls:'yes' },
-        { value:'partial', label:'Parcial', cls:'partial' }
+      const opts = [
+        { value: 'no',      label: 'No',      cls: 'no'      },
+        { value: 'yes',     label: 'Sí',      cls: 'yes'     },
+        { value: 'partial', label: 'Parcial', cls: 'partial' }
       ];
 
-      const dropdown = createCustomDropdown(pagoVal, options, val => {
+      const dropdown = createCustomDropdown(pagoVal, opts, val => {
         if (val === 'yes') {
           ch.pagoPorMes[mesKey] = true;
           delete ch.partialPayments?.[mesKey];
@@ -2628,9 +2634,10 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
         saveToFirebaseServices();
         renderChildrenTable(arr, mesKey);
       });
+
       cellPago.appendChild(dropdown);
 
-      // Input parcial si corresponde
+      // Si “Parcial”, mostrar input debajo
       if (pagoVal === 'partial') {
         const inputMonto = document.createElement('input');
         inputMonto.type  = 'number';
@@ -2660,9 +2667,9 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
         cellPago.appendChild(inputMonto);
       }
 
-      // Pensiones atrasadas
-      const cellA = row.insertCell(5);
-      cellA.style.textAlign = 'center';
+      // ─── “Pensiones atrasadas” ─────────────────────
+      const cellAtraso = row.insertCell(5);
+      cellAtraso.style.textAlign = 'center';
       const inputA = document.createElement('input');
       inputA.type = 'number';
       inputA.value = ch.pensionesAtrasadas || 0;
@@ -2679,35 +2686,48 @@ function renderChildrenTable(arr, mesKey = getYearMonth()) {
         ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
         saveToFirebaseServices();
       };
-      cellA.appendChild(inputA);
+      cellAtraso.appendChild(inputA);
 
-      // Acciones
+      // Mostrar deuda si existe
+      const deuda = ch.deudaPorMes?.[mesKey];
+      if (deuda > 0) {
+        const divDeuda = document.createElement('div');
+        divDeuda.textContent = `Adeuda S/ ${deuda.toFixed(2)}`;
+        Object.assign(divDeuda.style, {
+          marginTop:    '6px',
+          fontSize:     '0.9rem',
+          color:        '#E74C3C',
+          fontWeight:   '600'
+        });
+        cellAtraso.appendChild(divDeuda);
+      }
+
+      // ─── Acciones (editar/eliminar) ────────────
       const accCell = row.insertCell(6);
       accCell.style.textAlign = 'center';
       ['✎','🗑️'].forEach((icon, i) => {
         const btn = document.createElement('button');
         btn.textContent = icon;
         Object.assign(btn.style, {
-          background:   i===0 ? '#4a90e2' : '#E74C3C',
-          color:        '#fff',
-          border:       'none',
-          borderRadius: '4px',
-          width:        '28px',
-          height:       '28px',
-          fontSize:     '1rem',
-          margin:       '0 4px',
-          lineHeight:   '1',
-          cursor:       'pointer'
+          background:    i === 0 ? '#4a90e2' : '#E74C3C',
+          color:         '#fff',
+          border:        'none',
+          borderRadius:  '4px',
+          width:         '28px',
+          height:        '28px',
+          fontSize:      '1rem',
+          margin:        '0 4px',
+          lineHeight:    '1',
+          cursor:        'pointer'
         });
         btn.onclick = () => {
-          if (i===0) editServiceChild(ch.id);
-          else       deleteServiceChild(ch.id);
+          if (i === 0) editServiceChild(ch.id);
+          else         deleteServiceChild(ch.id);
         };
         accCell.appendChild(btn);
       });
     });
 }
-
 function agregarOguardarChild(){
   if(!editingServiceId){
     alert('No hay servicio seleccionado');
@@ -2950,66 +2970,60 @@ function carryOverFixedEgresos(mesKey) {
 
 
   // Renderiza la vista de Finanzas según el mes seleccionado
+/**
+ * Renderiza todo el panel de Finanzas cuando cambia de mes, 
+ * incluyendo parciales en Ingresos y en los gráficos.
+ */
 function renderFinanzas() {
   const mesSeleccionado = document.getElementById('finanzasMes').value;
 
   carryOverFixedEgresos(mesSeleccionado);
+  // … lógica de copia de fijos …
 
-  const [anioSel, mesSel] = mesSeleccionado.split("-").map(Number);
-
-  // ¿Ya hay fijos copiados?
-  const existeFijos = finanzasData.egresos.some(e =>
-    e.tipo === "Fijo" &&
-    e.anio === anioSel &&
-    e.mes === mesSel
-  );
-  if (!existeFijos) {
-    const prev = new Date(anioSel, mesSel - 2, 1);
-    const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
-    const prevFijos = finanzasData.egresos.filter(e =>
-      e.tipo === "Fijo" &&
-      `${e.anio}-${String(e.mes).padStart(2, '0')}` === prevKey
-    );
-    prevFijos.forEach(e => {
-      finanzasData.egresos.push({
-        ...e,
-        id: nextEgresoId++,
-        anio: anioSel,
-        mes: mesSel
-      });
-    });
-  }
-
+  // Egresos calculados igual que antes…
   const egresosFiltrados = finanzasData.egresos
-    .filter(e => `${e.anio}-${String(e.mes).padStart(2, '0')}` === mesSeleccionado);
-
+    .filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado);
   const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
   const totalEgresosFijos     = calcularEgresosTipo(egresosFiltrados, "Fijo");
   const totalEgresos          = calcularEgresosTotales(egresosFiltrados);
 
+  // Ingresos esperados sigue siendo SUMA de total potencial:
   const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
-  const netoEsperado  = calcularIngresosNetoEsperado(mesSeleccionado);
-  const brutoTotales  = calcularIngresosBrutosTotales(mesSeleccionado);
-  const netoTotales   = calcularIngresosNetosTotales(mesSeleccionado);
 
-  document.getElementById('egresosVariables').textContent     = "S/ " + totalEgresosVariables.toFixed(2);
-  document.getElementById('egresosFijos').textContent         = "S/ " + totalEgresosFijos.toFixed(2);
-  document.getElementById('egresosTotales').textContent       = "S/ " + totalEgresos.toFixed(2);
-  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
-  document.getElementById('ingresosNetosEsperados').textContent  = "S/ " + netoEsperado.toFixed(2);
+  // INGRESOS REALES: ahora incluye PARCIALES
+  let ingresosMatricula = 0;
+  let ingresosTaller    = 0;
+
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if (!childIsActiveInMonth(child, mesSeleccionado)) return;
+
+      const parc = child.partialPayments?.[mesSeleccionado];
+      if (parc != null) {
+        // sumo parcial
+        if (serv.title === "Matrícula") ingresosMatricula += parc;
+        else                             ingresosTaller    += parc;
+      } else if (child.pagoPorMes?.[mesSeleccionado]) {
+        // sumo completo
+        if (serv.title === "Matrícula") ingresosMatricula += child.total || 0;
+        else                             ingresosTaller    += child.total || 0;
+      }
+    });
+  });
+
+  // Totales y netos
+  const brutoTotales = ingresosMatricula + ingresosTaller;
+  const netoTotales  = brutoTotales - totalEgresos;
+
+  // Pinta los indicadores
   document.getElementById('ingresosBrutosTotales').textContent   = "S/ " + brutoTotales.toFixed(2);
   document.getElementById('ingresosNetosTotales').textContent    = "S/ " + netoTotales.toFixed(2);
-  document.getElementById('ingresosBruto').textContent          = "S/ " + brutoEsperado.toFixed(2);
-  document.getElementById('ingresosNetos').textContent          = "S/ " + netoTotales.toFixed(2);
-
-  const variacion = netoTotales;
-  const indicador = document.getElementById('indicadorVariacion');
-  indicador.textContent = "Variación: " + (variacion >= 0 ? "+" : "") + variacion.toFixed(2) + "%";
-  indicador.style.color = variacion < 0 ? "red" : "";
+  document.getElementById('ingresosBruto').textContent           = "S/ " + ingresosMatricula.toFixed(2);
+  document.getElementById('ingresosNetos').textContent           = "S/ " + netoTotales.toFixed(2);
+  // … resto de actualización de egresos y gráficos …
 
   renderTablaEgresos(egresosFiltrados);
   renderTablaIngresos(mesSeleccionado);
-  actualizarResumenMensual(mesSeleccionado);
   actualizarGraficosFinanzas();
 }
 
@@ -3080,46 +3094,57 @@ function obtenerLineal(keyName){
   return { labels, datos };
 }
 
-function renderTablaIngresos(mesKey){
-  const tbody = document.getElementById('tablaIngresos').querySelector('tbody');
+function renderTablaIngresos(mesKey) {
+  const tbody = document
+    .getElementById('tablaIngresos')
+    .querySelector('tbody');
   tbody.innerHTML = '';
 
-  services.forEach(serv=>{
-    serv.children.forEach(child=>{
-      // solo alumnos activos ese mes
-      if(!childIsActiveInMonth(child, mesKey)) return;
+  services.forEach(serv => {
+    serv.children.forEach(child => {
+      if (!childIsActiveInMonth(child, mesKey)) return;
 
       const row = tbody.insertRow();
       row.insertCell(0).textContent = child.name;
-      row.insertCell(1).textContent = (serv.title === 'Matrícula') ? 'Matrícula' : 'Taller';
+      row.insertCell(1).textContent =
+        serv.title === 'Matrícula' ? 'Matrícula' : 'Taller';
       row.insertCell(2).textContent = serv.title;
-      row.insertCell(3).textContent = `S/ ${child.total?.toFixed(2) || '0.00'}`;
 
-      /* --- botón Pagó Mensualidad --- */
+      // Determinar monto a mostrar (parcial o total)
+      const parcial = child.partialPayments?.[mesKey];
+      const monto = parcial != null
+        ? parcial
+        : (child.total || 0);
+      row.insertCell(3).textContent = `S/ ${monto.toFixed(2)}`;
+
+      // Botón Pagó Mensión sin flecha
       const cellPago = row.insertCell(4);
-      const pagado   = !!child.pagoPorMes?.[mesKey];
-      const btn      = document.createElement('button');
-      btn.textContent         = pagado ? 'Sí' : 'No';
-      btn.style.backgroundColor = pagado ? '#3BB273' : '#E74C3C';
-      btn.style.color         = '#fff';
-      btn.style.border        = 'none';
-      btn.style.borderRadius  = '6px';
-      btn.style.padding       = '6px 10px';
-      btn.onclick = async ()=>{
-        child.pagoPorMes[mesKey] = !pagado;
-        await saveToFirebaseServices();
-        renderFinanzas();               // refresca totales
-      };
+      cellPago.style.textAlign = 'center';
+      const btn = document.createElement('button');
+      if (parcial != null) {
+        btn.textContent = 'Parcial';
+        btn.style.backgroundColor = '#4a90e2';
+      } else if (child.pagoPorMes?.[mesKey]) {
+        btn.textContent = 'Sí';
+        btn.style.backgroundColor = '#3BB273';
+      } else {
+        btn.textContent = 'No';
+        btn.style.backgroundColor = '#E74C3C';
+      }
+      Object.assign(btn.style, {
+        color:        '#fff',
+        border:       'none',
+        borderRadius: '6px',
+        width:        '100px',
+        height:       '40px',
+        fontSize:     '1rem',
+        margin:       '0',
+        lineHeight:   '1'
+      });
       cellPago.appendChild(btn);
     });
   });
 }
-
-
-
-/* variable global */
-let editingEgresoId = null;     //  ⬅  declara UNA sola vez justo después de nextEgresoId
-
 function agregarEgreso(){
   const nombre    = document.getElementById('egresoNombre').value.trim();
   const tipo      = document.getElementById('egresoTipo').value;
@@ -3641,20 +3666,39 @@ cont.appendChild(btnDescargarWord);
     renderMatriculasList();
   }
 function monthlyPaymentCheckAllServices() {
-  const currentYM = getYearMonth(); // p. ej. "2025-05"
+  const currentYM = getYearMonth(); // e.g. "2025-06"
+
   services.forEach(serv => {
     serv.children.forEach(ch => {
-      if (ch.lastPagoCheck && ch.lastPagoCheck !== currentYM) {
-        // si no pagó en el mes anterior, se acumula atraso
-        if (!ch.pagoPension) {
+      const prevYM = ch.lastPagoCheck || currentYM;
+
+      if (prevYM !== currentYM) {
+        const paidFull = !!ch.pagoPorMes?.[prevYM];
+        const paidPartial = ch.partialPayments?.[prevYM];
+
+        if (paidFull) {
+          // Nada que hacer: pagó completo
+        } else if (paidPartial != null) {
+          // Registro deuda
+          const owed = Math.max((ch.total || 0) - paidPartial, 0);
+          if (!ch.deudaPorMes) ch.deudaPorMes = {};
+          ch.deudaPorMes[prevYM] = owed;
+        } else {
+          // No pagó nada
           ch.pensionesAtrasadas = (ch.pensionesAtrasadas || 0) + 1;
         }
-        // reset
-        ch.pagoPension = false;
-        ch.lastPagoCheck = currentYM;
       }
+
+      // Inicializar estado pago mes actual si no existía
+      if (ch.pagoPorMes?.[currentYM] === undefined) {
+        if (!ch.pagoPorMes) ch.pagoPorMes = {};
+        ch.pagoPorMes[currentYM] = false;
+      }
+
+      ch.lastPagoCheck = currentYM;
     });
   });
+
   saveToFirebaseServices();
 }
 function filterMatriculasBySearch(){
