@@ -3232,21 +3232,23 @@ function renderTablaEgresos(egresos) {
    Devuelve arrays listos para Chart.js usando resumenMensual
    keyName = 'netoTotales' | 'egresosTotales' | 'brutoTotales' | …
 ----------------------------------------------------------- */
-function obtenerLineal(keyName){
+function obtenerLineal(keyName) {
   const labels = [];
   const datos  = [];
-
-  // las claves están en formato "YYYY-MM"
+  // Tomamos hasta los últimos 12 meses registrados
   const mesesOrdenados = Object.keys(finanzasData.resumenMensual)
-                               .sort()        // ascendente
-                               .slice(-12);   // últimos 12
-
-  mesesOrdenados.forEach(k=>{
-    const [y,m] = k.split('-');                // ej. "2025","05"
-    labels.push(`${meses[parseInt(m)-1]} ${y}`);   // "MAYO 2025"
-    datos.push(finanzasData.resumenMensual[k][keyName] || 0);
+                               .sort()    // “2025-01”, “2025-02”, …
+                               .slice(-12);
+  mesesOrdenados.forEach(k => {
+    const valor = finanzasData.resumenMensual[k][keyName] || 0;
+    // Solo incluimos si no es cero
+    if (valor !== 0) {
+      const [y, m] = k.split('-');
+      // Convierte “05” → índice 4 → “MAYO”
+      labels.push(`${meses[parseInt(m, 10)-1]} ${y}`);
+      datos.push(valor);
+    }
   });
-
   return { labels, datos };
 }
 
@@ -3372,28 +3374,32 @@ function editarEgreso(id){
 
 
   // Funciones para actualizar gráficos (placeholders)
-function actualizarGraficosFinanzas(){
+/**
+ * Actualiza todos los gráficos de Finanzas sin lanzar errores
+ * si window.chartXXX no es un Chart válido, y preservando
+ * los colores originales (verde/rojo para Pagado/Falta, etc.).
+ */
+function actualizarGraficosFinanzas() {
   const mesSeleccionado = document.getElementById('finanzasMes').value;
 
-  // Calculamos ingresos brutos esperados y totales
+  // ── Pie Total Mensual (Pagado / Falta) ─────────────────────────
   const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
   const brutoTotales  = calcularIngresosBrutosTotales(mesSeleccionado);
+  const faltante      = Math.max(brutoEsperado - brutoTotales, 0);
 
-  // Calculamos cuánto falta por cobrar del bruto esperado
-  const faltante = Math.max(brutoEsperado - brutoTotales, 0);
-
-  // *** Gráfico circular del Total Mensual ***
-  const ctxPastel = document.getElementById('chartFinanzasCircular').getContext('2d');
+  const ctxTotal = document
+    .getElementById('chartFinanzasCircular')
+    .getContext('2d');
   if (window.chartFinanzasCircular && typeof window.chartFinanzasCircular.destroy === 'function') {
     window.chartFinanzasCircular.destroy();
   }
-  window.chartFinanzasCircular = new Chart(ctxPastel, {
+  window.chartFinanzasCircular = new Chart(ctxTotal, {
     type: 'pie',
     data: {
       labels: ['Pagado', 'Falta'],
       datasets: [{
         data: [brutoTotales, faltante],
-        backgroundColor: ['#3BB273', '#E74C3C']  // verde y rojo
+        backgroundColor: ['#3BB273', '#E74C3C']
       }]
     },
     options: {
@@ -3401,129 +3407,146 @@ function actualizarGraficosFinanzas(){
       maintainAspectRatio: false
     }
   });
-const totalFijos = calcularEgresosTipo(
-  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
-  "Fijo"
-);
-const totalVariables = calcularEgresosTipo(
-  finanzasData.egresos.filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado),
-  "Variable"
-);
-const ctxPastelEgresos = document.getElementById('chartEgresosCircular').getContext('2d');
-if (window.chartEgresosCircular && typeof window.chartEgresosCircular.destroy === 'function') {
-  window.chartEgresosCircular.destroy();
-}
-window.chartEgresosCircular = new Chart(ctxPastelEgresos, {
-  type: 'pie',
-  data: {
-    labels: ['Fijos', 'Variables'],
-    datasets: [{
-      data: [totalFijos, totalVariables],
-      backgroundColor: ['#4a90e2', '#f1c40f']
-    }]
-  },
-  options: { responsive: true, maintainAspectRatio: false }
-});
-/* ======= INGRESOS del mes seleccionado ======= */
-let ingresosMatricula = 0;
-let ingresosTaller    = 0;
 
-services.forEach(serv => {
-  serv.children.forEach(child => {
-    // ¿el niño está activo ese mes?
-    if (!childIsActiveInMonth(child, mesSeleccionado)) return;
+  // ── Pie Egresos (Fijos / Variables) ────────────────────────────
+  const egresosThisMonth = finanzasData.egresos.filter(e =>
+    `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado
+  );
+  const totalFijos     = calcularEgresosTipo(egresosThisMonth, 'Fijo');
+  const totalVariables = calcularEgresosTipo(egresosThisMonth, 'Variable');
 
-    // ¿pagó ese mes?
-    const pagado = !!child.pagoPorMes?.[mesSeleccionado];
-    if (!pagado) return;
-
-    const monto = child.total || 0;
-    if (serv.title === "Matrícula") ingresosMatricula += monto;
-    else                            ingresosTaller    += monto;
+  const ctxEgrPie = document
+    .getElementById('chartEgresosCircular')
+    .getContext('2d');
+  if (window.chartEgresosCircular && typeof window.chartEgresosCircular.destroy === 'function') {
+    window.chartEgresosCircular.destroy();
+  }
+  window.chartEgresosCircular = new Chart(ctxEgrPie, {
+    type: 'pie',
+    data: {
+      labels: ['Fijos', 'Variables'],
+      datasets: [{
+        data: [totalFijos, totalVariables],
+        backgroundColor: ['#4a90e2', '#f1c40f']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
   });
-});
 
-const ctxPastelIngresos = document
-  .getElementById('chartIngresosCircular')
-  .getContext('2d');
+  // ── Pie Ingresos (Matrícula / Taller) ───────────────────────────
+  let ingresosMat = 0, ingresosTal = 0;
+  services.forEach(serv => {
+    serv.children.forEach(ch => {
+      if (!childIsActiveInMonth(ch, mesSeleccionado)) return;
+      const parc = ch.partialPayments?.[mesSeleccionado];
+      if (parc != null) {
+        if (serv.title === 'Matrícula') ingresosMat += parc;
+        else                             ingresosTal += parc;
+      } else if (ch.pagoPorMes?.[mesSeleccionado]) {
+        if (serv.title === 'Matrícula') ingresosMat += ch.total || 0;
+        else                             ingresosTal += ch.total || 0;
+      }
+    });
+  });
 
-if (window.chartIngresosCircular?.destroy)
-  window.chartIngresosCircular.destroy();
+  const ctxIngPie = document
+    .getElementById('chartIngresosCircular')
+    .getContext('2d');
+  if (window.chartIngresosCircular && typeof window.chartIngresosCircular.destroy === 'function') {
+    window.chartIngresosCircular.destroy();
+  }
+  window.chartIngresosCircular = new Chart(ctxIngPie, {
+    type: 'pie',
+    data: {
+      labels: ['Matrícula', 'Taller'],
+      datasets: [{
+        data: [ingresosMat, ingresosTal],
+        backgroundColor: ['#3BB273', '#f1c40f']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
 
-window.chartIngresosCircular = new Chart(ctxPastelIngresos, {
-  type: 'pie',
-  data: {
-    labels: ['Matrícula', 'Taller'],
-    datasets: [{
-      data: [ingresosMatricula, ingresosTaller],
-      backgroundColor: ['#3BB273', '#f1c40f']
-    }]
-  },
-  options: { responsive:true, maintainAspectRatio:false }
-});
+  // ── Línea Ingresos Netos Totales ───────────────────────────────
+  const datNetos = obtenerLineal('netoTotales');
+  const ctxLineNet = document
+    .getElementById('chartFinanzasLinealTotal')
+    .getContext('2d');
+  if (window.chartFinanzasLinealTotal && typeof window.chartFinanzasLinealTotal.destroy === 'function') {
+    window.chartFinanzasLinealTotal.destroy();
+  }
+  window.chartFinanzasLinealTotal = new Chart(ctxLineNet, {
+    type: 'line',
+    data: {
+      labels: datNetos.labels,
+      datasets: [{
+        label: 'Ingresos Netos Totales',
+        data: datNetos.datos,
+        borderColor: '#3BB273',
+        backgroundColor: 'rgba(59,178,115,0.2)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
 
-const datNeto = obtenerLineal('netoTotales');   // ← histórico ya cerrado
-const ctxLineal = document.getElementById('chartFinanzasLinealTotal').getContext('2d');
+  // ── Línea Ingresos Netos (por separado) ───────────────────────
+  const datIngresos = obtenerLineal('netoTotales');
+  const ctxLineIng = document
+    .getElementById('chartIngresosLineal')
+    .getContext('2d');
+  if (window.chartIngresosLineal && typeof window.chartIngresosLineal.destroy === 'function') {
+    window.chartIngresosLineal.destroy();
+  }
+  window.chartIngresosLineal = new Chart(ctxLineIng, {
+    type: 'line',
+    data: {
+      labels: datIngresos.labels,
+      datasets: [{
+        label: 'Ingresos Netos',
+        data: datIngresos.datos,
+        borderColor: '#3BB273',
+        backgroundColor: 'rgba(59,178,115,0.2)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
 
-if (window.chartFinanzasLinealTotal &&
-    typeof window.chartFinanzasLinealTotal.destroy === 'function') {
-  window.chartFinanzasLinealTotal.destroy();
-}   // 👈  llave que faltaba
-
-window.chartFinanzasLinealTotal = new Chart(ctxLineal, {
-  type: 'line',
-  data: {
-    labels: datNeto.labels,
-    datasets: [{
-      label: 'Ingresos Netos Totales',
-      data:  datNeto.datos,
-      borderColor: '#3BB273',
-      backgroundColor: 'rgba(59,178,115,0.2)'
-    }]
-  },
-  options: { responsive: true, maintainAspectRatio: false }
-});
-
-const datIngresos = obtenerLineal('netoTotales');   // o 'brutoTotales' si prefieres
-const ctxLinealIngresos = document.getElementById('chartIngresosLineal').getContext('2d');
-
-if (window.chartIngresosLineal && typeof window.chartIngresosLineal.destroy === 'function') {
-  window.chartIngresosLineal.destroy();
-}
-
-window.chartIngresosLineal = new Chart(ctxLinealIngresos,{
-  type:'line',
-  data:{
-    labels: datIngresos.labels,
-    datasets:[{
-      label:'Ingresos Netos Totales',
-      data:  datIngresos.datos,
-      borderColor:'#3BB273',
-      backgroundColor:'rgba(59,178,115,0.2)'
-    }]
-  },
-  options:{ responsive:true, maintainAspectRatio:false }
-});
-const datEgresos = obtenerLineal('egresosTotales');
-const ctxLinealEgresos = document.getElementById('chartEgresosLineal').getContext('2d');
-
-if (window.chartEgresosLineal && typeof window.chartEgresosLineal.destroy === 'function') {
-  window.chartEgresosLineal.destroy();
-}
-
-window.chartEgresosLineal = new Chart(ctxLinealEgresos,{
-  type:'line',
-  data:{
-    labels: datEgresos.labels,
-    datasets:[{
-      label:'Egresos Totales',
-      data:  datEgresos.datos,
-      borderColor:'#E74C3C',
-      backgroundColor:'rgba(231,76,60,0.2)'
-    }]
-  },
-  options:{ responsive:true, maintainAspectRatio:false }
-});
+  // ── Línea Egresos Totales ──────────────────────────────────────
+  const datEgresos = obtenerLineal('egresosTotales');
+  const ctxLineEgr = document
+    .getElementById('chartEgresosLineal')
+    .getContext('2d');
+  if (window.chartEgresosLineal && typeof window.chartEgresosLineal.destroy === 'function') {
+    window.chartEgresosLineal.destroy();
+  }
+  window.chartEgresosLineal = new Chart(ctxLineEgr, {
+    type: 'line',
+    data: {
+      labels: datEgresos.labels,
+      datasets: [{
+        label: 'Egresos Totales',
+        data: datEgresos.datos,
+        borderColor: '#E74C3C',
+        backgroundColor: 'rgba(231,76,60,0.2)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
 }
 
 
