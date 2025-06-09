@@ -1528,6 +1528,15 @@ document.addEventListener('DOMContentLoaded', addExportButtons);
     console.error("Error loading finanzas data:", error);
   }
 }
+function calcularVariacion(mesKey) {
+  const [y,m] = mesKey.split('-').map(Number);
+  let ay=y, am=m-1;
+  if (am===0) { ay--; am=12; }
+  const prevKey = `${ay}-${String(am).padStart(2,'0')}`;
+  const prev = finanzasData.resumenMensual[prevKey]?.netoTotales  || 0;
+  const curr = finanzasData.resumenMensual[mesKey]?.netoTotales   || 0;
+  return prev ? ((curr - prev)/prev)*100 : 0;
+}
 
 async function saveFinanzasData() {
   try {
@@ -3102,58 +3111,77 @@ function carryOverFixedEgresos(mesKey) {
  * Renderiza todo el panel de Finanzas cuando cambia de mes, 
  * incluyendo parciales en Ingresos y en los gráficos.
  */
+/**
+ * Renderiza todo el panel de Finanzas para el mes seleccionado,
+ * calcula egresos, ingresos (incluyendo parciales), variación y actualiza gráficos/tablas.
+ */
 function renderFinanzas() {
-  const mesSeleccionado = document.getElementById('finanzasMes').value;
+  // 1️⃣ Mes seleccionado
+  const mesSeleccionado = document.getElementById('finanzasMes').value; // "YYYY-MM"
+  const [anioSel, mesSel] = mesSeleccionado.split('-').map(Number);
 
-  carryOverFixedEgresos(mesSeleccionado);
-  // … lógica de copia de fijos …
+  // 2️⃣ Copia de egresos fijos del mes anterior si aún no existen
+  const prevDate = new Date(anioSel, mesSel - 2, 1);
+  const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  const existeFijos = finanzasData.egresos.some(e =>
+    e.tipo === "Fijo" &&
+    `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado
+  );
+  if (!existeFijos) {
+    const prevFijos = finanzasData.egresos.filter(e =>
+      e.tipo === "Fijo" &&
+      `${e.anio}-${String(e.mes).padStart(2,'0')}` === prevKey
+    );
+    prevFijos.forEach(e => {
+      finanzasData.egresos.push({
+        ...e,
+        id: nextEgresoId++,
+        anio: anioSel,
+        mes: mesSel
+      });
+    });
+  }
 
-  // Egresos calculados igual que antes…
-  const egresosFiltrados = finanzasData.egresos
-    .filter(e => `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado);
+  // 3️⃣ Filtrar egresos de este mes
+  const egresosFiltrados = finanzasData.egresos.filter(e =>
+    `${e.anio}-${String(e.mes).padStart(2,'0')}` === mesSeleccionado
+  );
+
+  // 4️⃣ Totales de egresos
   const totalEgresosVariables = calcularEgresosTipo(egresosFiltrados, "Variable");
   const totalEgresosFijos     = calcularEgresosTipo(egresosFiltrados, "Fijo");
   const totalEgresos          = calcularEgresosTotales(egresosFiltrados);
 
-  // Ingresos esperados sigue siendo SUMA de total potencial:
+  // 5️⃣ Ingresos esperados y reales (incluyendo parciales)
   const brutoEsperado = calcularIngresosBrutoEsperado(mesSeleccionado);
+  const brutoTotales  = calcularIngresosBrutosTotales(mesSeleccionado);
+  const netoEsperado  = calcularIngresosNetoEsperado(mesSeleccionado);
+  const netoTotales   = calcularIngresosNetosTotales(mesSeleccionado);
 
-  // INGRESOS REALES: ahora incluye PARCIALES
-  let ingresosMatricula = 0;
-  let ingresosTaller    = 0;
-
-  services.forEach(serv => {
-    serv.children.forEach(child => {
-      if (!childIsActiveInMonth(child, mesSeleccionado)) return;
-
-      const parc = child.partialPayments?.[mesSeleccionado];
-      if (parc != null) {
-        // sumo parcial
-        if (serv.title === "Matrícula") ingresosMatricula += parc;
-        else                             ingresosTaller    += parc;
-      } else if (child.pagoPorMes?.[mesSeleccionado]) {
-        // sumo completo
-        if (serv.title === "Matrícula") ingresosMatricula += child.total || 0;
-        else                             ingresosTaller    += child.total || 0;
-      }
-    });
-  });
-
-  // Totales y netos
-  const brutoTotales = ingresosMatricula + ingresosTaller;
-  const netoTotales  = brutoTotales - totalEgresos;
-
-  // Pinta los indicadores
+  // 6️⃣ Actualizar tarjeta de indicadores
+  document.getElementById('egresosVariables').textContent     = "S/ " + totalEgresosVariables.toFixed(2);
+  document.getElementById('egresosFijos').textContent         = "S/ " + totalEgresosFijos.toFixed(2);
+  document.getElementById('egresosTotales').textContent       = "S/ " + totalEgresos.toFixed(2);
+  document.getElementById('ingresosBrutosEsperados').textContent = "S/ " + brutoEsperado.toFixed(2);
+  document.getElementById('ingresosNetosEsperados').textContent  = "S/ " + netoEsperado.toFixed(2);
   document.getElementById('ingresosBrutosTotales').textContent   = "S/ " + brutoTotales.toFixed(2);
   document.getElementById('ingresosNetosTotales').textContent    = "S/ " + netoTotales.toFixed(2);
-  document.getElementById('ingresosBruto').textContent           = "S/ " + ingresosMatricula.toFixed(2);
-  document.getElementById('ingresosNetos').textContent           = "S/ " + netoTotales.toFixed(2);
-  // … resto de actualización de egresos y gráficos …
 
+  // 7️⃣ Actualizar resumen mensual en memoria
+  actualizarResumenMensual(mesSeleccionado);
+
+  // 8️⃣ Calcular y mostrar variación con respecto al mes anterior
+  const pct = calcularVariacion(mesSeleccionado);
+  const indicador = document.getElementById('indicadorVariacion');
+  indicador.textContent = `Variación: ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+  indicador.style.color = pct < 0 ? 'red' : '';
+
+  // 9️⃣ Renderizar tablas y gráficos
   renderTablaEgresos(egresosFiltrados);
   renderTablaIngresos(mesSeleccionado);
   actualizarGraficosFinanzas();
 }
+
 
   function calcularEgresosTipo(egresos, tipo){
     return egresos.filter(e => e.tipo === tipo).reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
@@ -3223,55 +3251,73 @@ function obtenerLineal(keyName){
 }
 
 function renderTablaIngresos(mesKey) {
-  const tbody = document
-    .getElementById('tablaIngresos')
-    .querySelector('tbody');
-  tbody.innerHTML = '';
+  const tbody      = document.querySelector('#tablaIngresos tbody');
+  tbody.innerHTML  = '';
 
+  const tipoSel    = document.getElementById('filtroIngresosTipo').value;
+  const subtipoSel = document.getElementById('filtroIngresosSubtipo').value;
+
+  // Para cada servicio…
   services.forEach(serv => {
+    // ① Filtrar por Tipo:
+    if (tipoSel === 'Matrícula' && serv.title !== 'Matrícula') return;
+    if (tipoSel === 'Taller' && serv.title === 'Matrícula')    return;
+
+    // ② Filtrar por Subtipo (nombre exacto del servicio)
+    if (subtipoSel && serv.title !== subtipoSel) return;
+
+    // ③ Recorrer niños
     serv.children.forEach(child => {
       if (!childIsActiveInMonth(child, mesKey)) return;
 
       const row = tbody.insertRow();
+
+      // Nombre y tipo de servicio
       row.insertCell(0).textContent = child.name;
-      row.insertCell(1).textContent =
-        serv.title === 'Matrícula' ? 'Matrícula' : 'Taller';
+      row.insertCell(1).textContent = serv.title === 'Matrícula' ? 'Matrícula' : 'Taller';
       row.insertCell(2).textContent = serv.title;
 
-      // Determinar monto a mostrar (parcial o total)
-      const parcial = child.partialPayments?.[mesKey];
-      const monto = parcial != null
-        ? parcial
-        : (child.total || 0);
+      // Monto: parcial o total
+      const parc = child.partialPayments?.[mesKey];
+      const monto = parc != null ? parc : (child.total || 0);
       row.insertCell(3).textContent = `S/ ${monto.toFixed(2)}`;
 
-      // Botón Pagó Mensión sin flecha
+      // Pagó Mensualidad
       const cellPago = row.insertCell(4);
       cellPago.style.textAlign = 'center';
-      const btn = document.createElement('button');
-      if (parcial != null) {
-        btn.textContent = 'Parcial';
-        btn.style.backgroundColor = '#4a90e2';
+      const btnPago = document.createElement('button');
+      if (parc != null) {
+        btnPago.textContent = 'Parcial';
+        btnPago.style.backgroundColor = '#4a90e2';
       } else if (child.pagoPorMes?.[mesKey]) {
-        btn.textContent = 'Sí';
-        btn.style.backgroundColor = '#3BB273';
+        btnPago.textContent = 'Sí';
+        btnPago.style.backgroundColor = '#3BB273';
       } else {
-        btn.textContent = 'No';
-        btn.style.backgroundColor = '#E74C3C';
+        btnPago.textContent = 'No';
+        btnPago.style.backgroundColor = '#E74C3C';
       }
-      Object.assign(btn.style, {
+      Object.assign(btnPago.style, {
         color:        '#fff',
         border:       'none',
         borderRadius: '6px',
-        width:        '100px',
-        height:       '40px',
-        fontSize:     '1rem',
-        margin:       '0',
-        lineHeight:   '1'
+        padding:      '8px 14px',
+        fontWeight:   '600'
       });
-      cellPago.appendChild(btn);
+      cellPago.appendChild(btnPago);
+
+      // — FIN de la fila —
     });
   });
+
+  // Si después de todo no hay filas:
+  if (!tbody.hasChildNodes()) {
+    const row = tbody.insertRow();
+    const cell = row.insertCell(0);
+    cell.colSpan = 5;
+    cell.textContent = 'No hay ingresos para mostrar';
+    cell.style.textAlign = 'center';
+    cell.style.padding = '12px';
+  }
 }
 function agregarEgreso(){
   const nombre    = document.getElementById('egresoNombre').value.trim();
