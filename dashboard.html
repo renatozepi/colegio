@@ -12,6 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     /* =================== ESTILOS GENERALES =================== */
+#proofBackdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  display:none; align-items:center; justify-content:center; z-index:10;
+}
+#proofModal{
+  background:#fff; padding:24px 28px; border-radius:8px; width:320px;
+  box-shadow:0 4px 12px rgba(0,0,0,.25); text-align:center;
+}
+#proofModal h3{margin-top:0; color:#1a2e55;}
+#proofModal input[type=file]{margin:18px 0;}
+#proofModal button{
+  margin:0 6px; padding:8px 22px; border:none; border-radius:6px;
+  font-weight:600; cursor:pointer;
+}
+#btnProofSave{background:#4a90e2; color:#fff;}
+#btnProofCancel{background:#cccccc;}
 #logoutContainer {
   position: fixed;
   top: 15px;
@@ -66,6 +82,28 @@
       flex-wrap: wrap;
       justify-content: center;
     }
+/* ====== estilos botones acciones & hover ====== */
+.action-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  justify-content:center;
+}
+.action-btn{
+  width:30px;height:30px;
+  border:none;border-radius:6px;
+  color:#fff;font-weight:600;
+  cursor:pointer;
+  transition:filter .15s;
+}
+.action-btn:hover{ filter:brightness(1.25); }
+.custom-dropdown .selected:hover,
+.custom-dropdown .option:hover{
+  filter:brightness(1.25);
+}
+/* hover para caja seleccionada del dropdown */
+.custom-dropdown .selected:hover{ filter:brightness(1.15); }
+
     .landing-buttons button {
       background-color: #f1c40f;
       color: #1a2e55;
@@ -860,7 +898,7 @@ button.day-btn,
 .pension-btn{
   color:#fff !important;     /* texto siempre blanco */
 }
-    }
+    
   </style>
 </head>
 <body>
@@ -881,7 +919,15 @@ button.day-btn,
     <button id="btnUsers" onclick="goToUsers()">Administrador de Usuarios</button>
   </div>
 </div>
-
+<div id="proofBackdrop">
+  <div id="proofModal">
+    <h3>Subir comprobante de pago</h3>
+    <input type="file" id="proofFile" accept="image/*,.doc,.docx,.pdf">
+    <br>
+    <button id="btnProofSave">Guardar</button>
+    <button id="btnProofCancel">Cerrar</button>
+  </div>
+</div>
 <!-- =================== CONTENEDOR MACROS =================== -->
 <div class="app-container" id="macrosContainer">
   <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
@@ -1006,6 +1052,8 @@ button.day-btn,
     <input type="text" id="childName" placeholder="Ej: JUAN" />
     <label>Apellidos:</label>
     <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
+  <label>DNI Padre:</label>                 <!-- NUEVO -->
+  <input type="text" id="childDniPadre" placeholder="DNI" />
 <label>Día Ingreso:</label>
 <input type="text"
        id="childDay"
@@ -1033,14 +1081,14 @@ button.day-btn,
   <table class="children-table">
     <thead>
       <tr>
-        <th>Nombre</th>
-        <th>Apellidos</th>
-        <th>Fecha</th>
-        <th>Variante</th>
-        <!-- Aquí agregamos las nuevas columnas: -->
-        <th>Pagó Pensión</th>
-        <th>Pensiones Atrasadas</th>
-        <th>Acciones</th>
+    <th>Nombre</th>
+    <th>Apellidos</th>
+    <th>Fecha de Inscripción</th>
+    <th>Variante</th>
+    <th>Pagó Pensión</th>
+    <th>Fecha de Pago</th>          <!-- NUEVA -->
+    <th>Pensiones Atrasadas</th>
+    <th>Acciones</th>
       </tr>
     </thead>
     <tbody id="tbodyChildren"></tbody>
@@ -1347,8 +1395,169 @@ button.day-btn,
 
   const appFirebase = initializeApp(firebaseConfig);
   const db = getFirestore(appFirebase);
+  /* ---------- UTILIDAD PARA BLOQUEAR ELIMINACIONES MASIVAS ---------- */
+const _delTimes_ = [];                                   // timestamps en ms
+function _canDelete(n){
+  const now = Date.now();
+  for(let i=_delTimes_.length-1;i>=0;i--){
+    if(now - _delTimes_[i] > 60_000) _delTimes_.splice(i,1); // descarta >1 min
+  }
+  if(_delTimes_.length + n > 3) return false;               // máx. 3 niños/min
+  while(n--) _delTimes_.push(now);
+  return true;
+}
+
+/* ---------- CLON Y DETECCIÓN DE ELIMINADOS ---------- */
+const deepCopy = obj => JSON.parse(JSON.stringify(obj));
+const diffRemoved = (oldArr,newArr)=>{
+  const oldIds=new Set(), newIds=new Set();
+  oldArr.forEach(s=>s.children.forEach(c=>oldIds.add(c.id)));
+  newArr.forEach(s=>s.children.forEach(c=>newIds.add(c.id)));
+  let gone=0; oldIds.forEach(id=>{ if(!newIds.has(id)) gone++; });
+  return gone;
+};
+
+/* ---------- CARGA Y GUARDADO DE SERVICES CON BLINDAJE ---------- */
+let prevServicesSnap = [];
+async function loadFromFirebaseServices(){
+  const snap = await getDoc(doc(db,"data","servicesData"));
+  if(!snap.exists()) return;
+  services = snap.data().services || [];
+  prevServicesSnap = deepCopy(services);
+}
+async function saveToFirebaseServices(){
+  const eliminados = diffRemoved(prevServicesSnap,services);
+  if(!_canDelete(eliminados)){
+    alert("⚠️  Se bloquearon cambios: límite de 3 niños eliminados por minuto.");
+    services = deepCopy(prevServicesSnap);                 // rollback
+    return;
+  }
+  prevServicesSnap = deepCopy(services);
+  await setDoc(doc(db,"data","servicesData"),{
+    services, nextServiceId, nextVariantId, nextServiceChildId
+  },{merge:true});
+}
+
+/* ---------- AGREGAR / EDITAR NIÑO ---------- */
+function agregarOguardarChild(){
+  if(!editingServiceId){ alert('No hay servicio seleccionado.'); return; }
+  const serv = services.find(s=>s.id===editingServiceId);
+  if(!serv) return;
+
+  const name     = document.getElementById('childName').value.trim().toUpperCase();
+  const lastname = document.getElementById('childLastname').value.trim().toUpperCase();
+  const dniPadre = document.getElementById('childDniPadre').value.trim();
+  const day      = document.getElementById('childDay').value.trim();
+  const mesSel   = document.getElementById('servicesMes').value;           // YYYY-MM
+  const sel      = document.getElementById('childVariantSelect');
+
+  let variantId = null;
+  if(!sel.disabled)      variantId = parseInt(sel.value);
+  else if(serv.variants.length===1) variantId = serv.variants[0].id;
+
+  if(!name || !lastname || !day){
+    alert('Completa todos los campos'); return;
+  }
+
+  const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
+
+  if(editingServiceChildId===null){
+    serv.children.push({
+      id : nextServiceChildId++,
+      name, lastname,
+      dniPadre,                                            // ← NUEVO
+      date : `${mesSel}-${String(parseInt(day)).padStart(2,'0')}`,
+      variantId,
+      mesRegistro : mesSel,
+      mesBaja     : null,
+      total       : precio,
+      ficha       : {},
+      fichaCompleta:false,
+      pagoPorMes  : { [mesSel]: false },
+      fechaPagoPorMes : {},                                // ← NUEVO
+      pensionesAtrasadas: 0,
+      lastPagoCheck : getYearMonth()
+    });
+  }else{
+    const ch = serv.children.find(c=>c.id===editingServiceChildId);
+    if(ch){
+      Object.assign(ch,{
+        name, lastname, dniPadre,
+        date:`${mesSel}-${String(parseInt(day)).padStart(2,'0')}`,
+        variantId, total:precio
+      });
+    }
+    editingServiceChildId = null;
+    document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+  }
+
+  clearChildForm();
+  renderChildrenTable(serv.children, mesSel);
+  saveToFirebaseServices();
+}
+
+
+/* ---------- DAR DE BAJA UN NIÑO ---------- */
+function deleteServiceChild(childId){
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+
+  const idx = serv.children.findIndex(c => c.id === childId);
+  if(idx === -1) return;
+  const ch  = serv.children[idx];
+
+  /* 1) Mensaje de confirmación */
+  const nombreCompleto = `${ch.name} ${ch.lastname}`.trim();
+  if(!confirm(`¿Seguro que deseas eliminar a ${nombreCompleto}?`)) return;
+
+  /* 2) Respeta el límite de 3 eliminaciones por minuto */
+  if(!_canDelete(1)){
+    alert("Límite de eliminaciones alcanzado (máx. 3 niños por minuto).");
+    return;
+  }
+
+  /* 3) Mes que el usuario está viendo en el selector */
+  const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+
+  /* 4) Si el niño se quita el mismo mes en que se registró,
+        se elimina físicamente; de lo contrario, baja lógica   */
+  if(ch.mesRegistro === mesSel){
+    serv.children.splice(idx,1);            // eliminación definitiva
+  }else{
+    ch.mesBaja = mesSel;                    // baja lógica (quedará en histórico)
+  }
+
+  saveToFirebaseServices();
+  renderChildrenTable(serv.children, mesSel);
+}
+
+/* ---------- ELIMINAR SERVICIO COMPLETO ---------- */
+function deleteService(serviceTitle){
+  const idx  = services.findIndex(s => s.title === serviceTitle);
+  if(idx === -1) return;
+
+  const serv = services[idx];
+  const n    = serv.children.length;
+
+  if(!_canDelete(n)){
+    alert("Límite de eliminaciones alcanzado (máx. 3 niños por minuto).");
+    return;
+  }
+  if(!confirm(`¿Seguro de eliminar “${serviceTitle}” y todos sus niños?`)) return;
+
+  services.splice(idx,1);
+  showServicesList();
+  saveToFirebaseServices();
+}
+
+
+
+/* ============== 3.  COPIA PROFUNDA & SNAPSHOT PARA GUARDADO ============== */
 
   // Recuperar usuario y permisos del localStorage
+let proofChild   = null;   // referencia al objeto niño
+let proofMesKey  = null; 
+let services=[], nextServiceId=1,nextVariantId=1,nextServiceChildId=1;
 let currentUser = {
   username: localStorage.getItem("usuario"),
   permisos: JSON.parse(localStorage.getItem("permisos") || "{}")
@@ -1364,6 +1573,7 @@ if (!currentUser.username) {
   /*************************************************************
    * Global Variables and Screen Navigation
    *************************************************************/
+  let editingVariantName = null;
   let screenStack = ["landing"];
   let updatingFromFirestore = false;
   let childrenSearchTerm = '';
@@ -1371,6 +1581,7 @@ if (!currentUser.username) {
   let users = [];
   let editingUsername = null;
   let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
+  let editingEgresoId = null;
 
 async function goToMacros() {
   // Verificar permiso (si lo deseas)
@@ -1428,61 +1639,61 @@ function styleSheet(ws, data) {
 }
 
 // 4) Exporta Histórico o Actual, incluyendo deuda por atrasos y parciales
-function exportServiceExcel(type) {
-  const serv = services.find(s => s.id === editingServiceId);
-  if (!serv) return;
+function exportServiceExcel(type){
+  const serv = services.find(s=>s.id===editingServiceId);
+  if(!serv) return;
   const currentYM = getYearMonth();
 
-  let children = serv.children;
-  if (type === 'Actual') {
-    children = children.filter(ch => childIsActiveInMonth(ch, currentYM));
-  }
+  let children = type==='Actual'
+      ? serv.children.filter(ch=>childIsActiveInMonth(ch,currentYM))
+      : serv.children;
 
-  const rows = children.map(ch => {
-    // Meses pagados
-    const paidFull = Object.entries(ch.pagoPorMes || {})
-                           .filter(([m,v]) => v).map(([m]) => m);
-    const paidPart = Object.keys(ch.partialPayments || {});
-    const mesesPag = Array.from(new Set([...paidFull, ...paidPart]))
-                          .sort().join(', ');
+  const toDDMMYYYY = iso=>{
+    if(!iso) return '';
+    const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`;
+  };
 
-    // Deuda de parciales registrados
-    const partialDebt = Object.values(ch.deudaPorMes || {})
-                             .reduce((sum,v) => sum + v, 0);
-    // Deuda por pensiones atrasadas
-    const overdueDebt = (ch.pensionesAtrasadas || 0) * (ch.total || 0);
+  const rows = children.map(ch=>{
+    const fechasPag = Object.values(ch.fechaPagoPorMes||{})
+                      .map(toDDMMYYYY).join(', ');
+
+    const partialDebt = Object.values(ch.deudaPorMes||{})
+                       .reduce((s,v)=>s+v,0);
+    const overdueDebt = (ch.pensionesAtrasadas||0)*(ch.total||0);
     const totalDebt   = partialDebt + overdueDebt;
 
-    // Dinero efectivamente pagado
     let paidSum = 0;
-    Object.values(ch.partialPayments || {}).forEach(p => paidSum += p);
-    Object.entries(ch.pagoPorMes || {}).forEach(([m,v]) => {
-      if (v) paidSum += ch.total || 0;
+    Object.values(ch.partialPayments||{}).forEach(p=>paidSum+=p);
+    Object.entries(ch.pagoPorMes||{}).forEach(([m,v])=>{
+      if(v) paidSum += ch.total||0;
     });
 
     return {
-      'Nombre y Apellidos':           `${ch.name} ${ch.lastname}`,
-      'Fecha de Ingreso':             ch.date,
-      'Meses que ha pagado pensión':  mesesPag,
-      'Deuda actual (S/)':            totalDebt,
-      'Pensiones atrasadas':          ch.pensionesAtrasadas || 0,
-      'Dinero total pagado (S/)':     paidSum
+      'Nombre y Apellidos' : `${ch.name} ${ch.lastname}`,
+      'Variante'           : getVariantName(ch.variantId)||'',
+      'DNI Padre'          : ch.dniPadre||'',
+      'Fecha de Ingreso'   : ch.date,
+      'Fecha de Baja'      : ch.mesBaja || '',            // NUEVO
+      'Fechas de Pago'     : fechasPag,                   // NUEVO formato
+      'Deuda actual (S/)'  : totalDebt,
+      'Pensiones atrasadas': ch.pensionesAtrasadas||0,
+      'Dinero pagado (S/)' : paidSum
     };
   });
 
   const wb = XLSX.utils.book_new();
-  if (rows.length) {
-    const ws = XLSX.utils.json_to_sheet(rows, { header: Object.keys(rows[0]) });
-    autoFitColumns(ws, rows);
-    styleSheet(ws, rows);
-    XLSX.utils.book_append_sheet(wb, ws, type);
+  if(rows.length){
+    const ws = XLSX.utils.json_to_sheet(rows,{header:Object.keys(rows[0])});
+    autoFitColumns(ws,rows);
+    styleSheet(ws,rows);
+    XLSX.utils.book_append_sheet(wb,ws,type);
   }
-
-  const hoy = new Date();
-  const fecha = `${hoy.getDate().toString().padStart(2,'0')}-${(hoy.getMonth()+1).toString().padStart(2,'0')}-${hoy.getFullYear()}`;
-  const filename = `${type} - ${serv.title} - ${fecha}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  const d=new Date();
+  const fecha=`${d.getDate().toString().padStart(2,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getFullYear()}`;
+  XLSX.writeFile(wb,`${type} - ${serv.title} - ${fecha}.xlsx`);
 }
+
+
 
 // 5) Wrappers de llamada
 function exportServiceHistoric() { exportServiceExcel('Histórico'); }
@@ -2214,46 +2425,13 @@ function openTabMacros(tabName) {
   /**************************************************************
    * ADMIN SERVICES
    **************************************************************/
-  let services = [];
+
   let editingVariantId = null;
-  let nextServiceId = 1;
-  let nextVariantId = 1;
-  let nextServiceChildId = 1;
   let serviceCheckDone = false; 
   let MATRICULA_ID = null;
   let editingServiceId = null;
   let editingServiceChildId = null;
-async function loadFromFirebaseServices(){
-  const snap = await getDoc(doc(db,"data","servicesData"));
-  if(!snap.exists()) return;
-
-  services = snap.data().services || [];
-const hoyYM = getYearMonth();
-  let changed = false;
-
-
-  services.forEach(serv=>{
-    serv.children.forEach(ch=>{
-
-if(!ch.pagoPorMes){
-ch.pagoPorMes = { [hoyYM]: !!ch.pagoPension };
- delete ch.pagoPension;            // ya no lo usaremos
-changed = true;
-}
-    });
-  });
-  if(changed) await saveToFirebaseServices();  // ⬅ guarda solo diferencias
-}
-  async function saveToFirebaseServices(){
-    try {
-      const docRef = doc(db, "data", "servicesData");
-      const obj = { services, nextServiceId, nextVariantId, nextServiceChildId };
-      await setDoc(docRef, obj, { merge: true });
-      console.log("Services data saved to Firebase");
-    } catch(error){
-      console.error("Error saving services to Firebase:", error);
-    }
-  }
+ let editingServiceTitle  = null;
   async function initServices(){
     await loadFromFirebaseServices();
     ensureMatriculaService();
@@ -2333,88 +2511,79 @@ function openTabServices(tabName) {
    Muestra la lista de servicios con los niños activos
    en el mes actual (YYYY‑MM), no el total histórico.
    ========================================================== */
-function showServicesList() {
+function showServicesList(){
   const container = document.getElementById('servicesList');
   container.innerHTML = '';
 
-  /* ——— 1) “Matrícula” siempre primero ——— */
-  services.sort((a, b) => {
-    if (a.title === 'Matrícula') return -1;
-    if (b.title === 'Matrícula') return 1;
-    return 0;
-  });
+  /* Matrícula primero */
+  services.sort((a,b) => (a.title === 'Matrícula' ? -1 : b.title === 'Matrícula' ? 1 : 0));
 
-  const mesActual = getYearMonth();              // p.ej. "2025‑05"
+  const mesActual = getYearMonth();
 
   services.forEach(s => {
-    /* ——— contenedor de cada fila ——— */
-    const div = document.createElement('div');
+    const div  = document.createElement('div');
     div.className = 'service-item';
 
-    /* niños que siguen activos en el mesActual */
-    const ninosMes = s.children
-                      .filter(ch => childIsActiveInMonth(ch, mesActual))
-                      .length;
+    const ninosMes = s.children.filter(c => childIsActiveInMonth(c, mesActual)).length;
+    const left = document.createElement('span');
+    left.textContent = `${s.title} (Variantes: ${s.variants.length}) (Niños: ${ninosMes})`;
+    div.appendChild(left);
 
-    /* ——— lado izquierdo: título + contadores ——— */
-    const leftSpan = document.createElement('span');
-    leftSpan.textContent =
-      `${s.title} (Variantes: ${s.variants.length}) (Niños: ${ninosMes})`;
+    const right = document.createElement('div');
 
-    /* ——— lado derecho: botones de acción ——— */
-    const rightDiv = document.createElement('div');
-
-    if (s.title !== 'Matrícula') {
-      const btnEdit = document.createElement('button');
-      btnEdit.textContent = 'Editar';
-      btnEdit.onclick     = () => editService(s.id);
-      rightDiv.appendChild(btnEdit);
+    if(s.title !== 'Matrícula'){
+      const bEd = document.createElement('button');
+      bEd.textContent = 'Editar';
+      bEd.onclick = () => editService(s.title);
+      right.appendChild(bEd);
     }
 
-    const btnMat = document.createElement('button');
-    btnMat.textContent = 'Administrar Niños';
-    btnMat.onclick     = () => openServiceChildren(s.id);
-    rightDiv.appendChild(btnMat);
+    const bNi = document.createElement('button');
+    bNi.textContent = 'Administrar Niños';
+    bNi.onclick = () => openServiceChildren(s.title);
+    right.appendChild(bNi);
 
-    if (s.title !== 'Matrícula') {
-      const btnDel = document.createElement('button');
-      btnDel.textContent = 'Eliminar';
-      btnDel.style.marginLeft = '5px';
-      btnDel.onclick = () => deleteService(s.id);
-      rightDiv.appendChild(btnDel);
+    if(s.title !== 'Matrícula'){
+      const bDel = document.createElement('button');
+      bDel.textContent = 'Eliminar';
+      bDel.style.marginLeft = '5px';
+      bDel.onclick = () => deleteService(s.title);
+      right.appendChild(bDel);
     }
 
-    div.appendChild(leftSpan);
-    div.appendChild(rightDiv);
+    div.appendChild(right);
     container.appendChild(div);
   });
 }
 
-function crearService() {
-  // 1. Verificar si el usuario tiene permiso general para crear servicios
-  if (!currentUser.permisos.services) {
+
+function crearService(){
+  /* ── permisos ── */
+  if(!currentUser.permisos.services){
     alert("No tienes permiso para crear servicios.");
     return;
   }
-
-  // 2. (Opcional) Verificar también si deseas que SÍ o SÍ tenga permisos 
-  //    de 'servicesVariants' para poder crear el servicio.
-  if (!currentUser.permisos.servicesVariants) {
-    alert("No tienes permiso para el creador de variantes, no se creará el servicio.");
-    return; 
+  if(!currentUser.permisos.servicesVariants){
+    alert("No tienes permiso para el creador de variantes.");
+    return;
   }
 
-  // 3. Si pasa las validaciones, ahora sí se crea
+  /* ── datos ── */
   const title = document.getElementById('tituloService').value.trim();
-  if (!title) {
+  if(!title){
     alert('Ingresa un título para el servicio');
     return;
   }
-  if (title === 'Matrícula') {
-    alert('Ya existe "Matrícula"');
+  if(title === 'Matrícula'){
+    alert('“Matrícula” ya existe.');
+    return;
+  }
+  if(services.some(s => s.title === title)){
+    alert('Ya existe un servicio con ese nombre.');
     return;
   }
 
+  /* ── crear ── */
   const newService = {
     id: nextServiceId++,
     title,
@@ -2423,38 +2592,30 @@ function crearService() {
   };
   services.push(newService);
 
+  /* limpiar y refrescar */
   document.getElementById('tituloService').value = '';
   showServicesList();
   saveToFirebaseServices();
 
-  // 4. Finalmente, abrimos la pestaña de Variantes
-  //    (ya sabemos que sí tiene permiso)
-  editService(newService.id);
+  /* abrir Variantes usando el título */
+  setTimeout(() => editService(title), 0);
 }
 
-function editService(serviceId) {
-  const serv = services.find(s => s.id === serviceId);
-  if (!serv) return;
+function editService(serviceTitle){
+  const serv = services.find(s => s.title === serviceTitle);
+  if(!serv) return;                    // no existe
 
-  // Verificar permiso "servicesVariants" (o el que quieras).
-  if (!currentUser.permisos.servicesVariants) {
-    alert("No tienes permiso para editar variantes de un servicio.");
-    return; 
-  }
+  /* guarda nombre + id (id sigue sirviendo internamente) */
+  editingServiceTitle = serviceTitle;
+  editingServiceId    = serv.id;
 
-  // Si SÍ tiene permiso, seguimos
-  editingServiceId = serviceId;
-  openTabServices('ServicesVariants'); // Aquí sí se abrirá la pestaña
+  openTabServices('ServicesVariants');
   document.getElementById('currentServiceTitle').textContent = serv.title;
   clearVariantForm();
   renderVariantsTable(serv.variants);
 }
-  function deleteService(serviceId){
-    if(!confirm('¿Seguro de eliminar este servicio?')) return;
-    services = services.filter(s => s.id !== serviceId);
-    showServicesList();
-    saveToFirebaseServices();
-  }
+
+
   /* Variants logic */
   function setupDaysButtons(){
     const dayLabels = ['LUN','MAR','MIE','JUE','VIE'];
@@ -2477,138 +2638,165 @@ function editService(serviceId) {
     document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
   }
-  function agregarOguardarVariante(){
-    if(!editingServiceId){
-      alert('No hay servicio seleccionado.');
-      return;
-    }
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv){
-      alert('Servicio no encontrado');
-      return;
-    }
-    const name = document.getElementById('variantName').value.trim();
-    const price = parseFloat(document.getElementById('variantPrice').value);
-    const startT = document.getElementById('variantStart').value;
-    const endT = document.getElementById('variantEnd').value;
-    const selectedDays = [];
-    document.querySelectorAll('.day-btn.selected').forEach(btn => selectedDays.push(btn.textContent));
-    if(!name || isNaN(price) || !startT || !endT){
-      alert('Completa todos los campos de la variante');
-      return;
-    }
-    if(editingVariantId === null){
-      const newVar = {
-        id: nextVariantId++,
-        name,
-        price,
-        days: selectedDays,
-        start: startT,
-        end: endT
-      };
-      serv.variants.push(newVar);
-    } else {
-      const idx = serv.variants.findIndex(v => v.id === editingVariantId);
-      if(idx >= 0){
-        serv.variants[idx].name = name;
-        serv.variants[idx].price = price;
-        serv.variants[idx].days = selectedDays;
-        serv.variants[idx].start = startT;
-        serv.variants[idx].end = endT;
-      }
-      editingVariantId = null;
-      document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
-    }
-    clearVariantForm();
-    renderVariantsTable(serv.variants);
-    saveToFirebaseServices();
+function agregarOguardarVariante(){
+  /* ── servicio activo ── */
+  if(!editingServiceTitle){
+    alert('No hay servicio seleccionado.');
+    return;
   }
-  function renderVariantsTable(arr){
-    const tbody = document.getElementById('tbodyVariants');
-    tbody.innerHTML = '';
-    arr.forEach(v => {
-      const row = tbody.insertRow();
-      row.insertCell(0).textContent = v.name;
-      row.insertCell(1).textContent = v.days.join(', ');
-      row.insertCell(2).textContent = `S/${v.price}`;
-      row.insertCell(3).textContent = `${v.start} - ${v.end}`;
-      const accCell = row.insertCell(4);
-      const btnEd = document.createElement('button');
-      btnEd.textContent = 'editar';
-      btnEd.onclick = () => editVariant(v.id);
-      accCell.appendChild(btnEd);
-      const btnDel = document.createElement('button');
-      btnDel.textContent = ' x ';
-      btnDel.style.marginLeft = '5px';
-      btnDel.onclick = () => deleteVariant(v.id);
-      accCell.appendChild(btnDel);
+  const serv = services.find(s => s.title === editingServiceTitle);
+  if(!serv){ alert('Servicio no encontrado'); return; }
+
+  /* ── datos del formulario ── */
+  const name   = document.getElementById('variantName').value.trim();
+  const price  = parseFloat(document.getElementById('variantPrice').value);
+  const startT = document.getElementById('variantStart').value;
+  const endT   = document.getElementById('variantEnd').value;
+  const days   = [...document.querySelectorAll('.day-btn.selected')]
+                   .map(b => b.textContent);
+
+  if(!name || isNaN(price) || !startT || !endT){
+    alert('Completa todos los campos de la variante');
+    return;
+  }
+
+  /* ── evitar duplicados dentro del MISMO servicio ── */
+  const existe = serv.variants.some(v =>
+    v.name === name && v.name !== editingVariantName   // permite sobrescribir la misma
+  );
+  if(existe){
+    alert(`Ya existe una variante llamada “${name}” dentro de «${serv.title}».`+
+          `\nUsa un nombre distinto o edita la variante existente.`);
+    return;
+  }
+
+  /* ── agregar o actualizar por nombre ── */
+  const idx = serv.variants.findIndex(v => v.name === editingVariantName);
+
+  if(idx === -1){                 // NUEVA
+    serv.variants.push({
+      id   : nextVariantId++,     // id se sigue generando p/compatibilidad
+      name , price , days ,
+      start: startT, end: endT
+    });
+  }else{                          // EDITAR
+    Object.assign(serv.variants[idx], {
+      name , price , days ,
+      start: startT, end: endT
     });
   }
-  function editVariant(variantId){
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv) return;
-    const vr = serv.variants.find(v => v.id === variantId);
-    if(!vr) return;
-    editingVariantId = variantId;
-    document.getElementById('variantName').value = vr.name;
-    document.getElementById('variantPrice').value = vr.price;
-    document.getElementById('variantStart').value = vr.start;
-    document.getElementById('variantEnd').value = vr.end;
-    document.querySelectorAll('.day-btn').forEach(btn => {
-      if(vr.days.includes(btn.textContent)) btn.classList.add('selected');
-      else btn.classList.remove('selected');
-    });
-    document.getElementById('btnVariantPrincipal').textContent = 'Guardar Variante';
-  }
-  function deleteVariant(variantId){
-    const serv = services.find(s => s.id === editingServiceId);
-    if(!serv) return;
-    serv.variants = serv.variants.filter(v => v.id !== variantId);
-    renderVariantsTable(serv.variants);
-    saveToFirebaseServices();
-  }
+
+  /* ── limpiar interfaz ── */
+  editingVariantName = null;
+  document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
+  clearVariantForm();
+  renderVariantsTable(serv.variants);
+  saveToFirebaseServices();
+}
+
+
+function renderVariantsTable(arr){
+  const tbody = document.getElementById('tbodyVariants');
+  tbody.innerHTML = '';
+
+  arr.forEach(v => {
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = v.name;
+    row.insertCell(1).textContent = v.days.join(', ');
+    row.insertCell(2).textContent = `S/${v.price}`;
+    row.insertCell(3).textContent = `${v.start} – ${v.end}`;
+
+    const acc = row.insertCell(4);
+
+    /* EDITAR – pasamos el nombre */
+    const bEd = document.createElement('button');
+    bEd.textContent = 'editar';
+    bEd.onclick = () => editVariant(v.name);
+    acc.appendChild(bEd);
+
+    /* ELIMINAR – también por nombre */
+    const bDel = document.createElement('button');
+    bDel.textContent = ' x ';
+    bDel.style.marginLeft = '5px';
+    bDel.onclick = () => deleteVariant(v.name);
+    acc.appendChild(bDel);
+  });
+}
+
+function editVariant(variantName){
+  const serv = services.find(s => s.title === editingServiceTitle);
+  if(!serv) return;
+
+  const v = serv.variants.find(x => x.name === variantName);
+  if(!v) return;
+
+  editingVariantName = variantName;
+
+  document.getElementById('variantName').value  = v.name;
+  document.getElementById('variantPrice').value = v.price;
+  document.getElementById('variantStart').value = v.start;
+  document.getElementById('variantEnd').value   = v.end;
+
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.classList.toggle('selected', v.days.includes(btn.textContent));
+  });
+
+  document.getElementById('btnVariantPrincipal').textContent = 'Guardar Variante';
+}
+
+function deleteVariant(variantName){
+  const serv = services.find(s => s.title === editingServiceTitle);
+  if(!serv) return;
+
+  const idx = serv.variants.findIndex(v => v.name === variantName);
+  if(idx === -1) return;
+
+  if(!confirm(`¿Eliminar la variante “${variantName}”?`)) return;
+
+  serv.variants.splice(idx,1);
+  renderVariantsTable(serv.variants);
+  saveToFirebaseServices();
+}
+
   function doneVariants(){
     openTabServices('ServicesMain');
     showServicesList();
     saveToFirebaseServices();
   }
   /* Administrar Niños */
-  function openServiceChildren(serviceId){
-    editingServiceId = serviceId;
-    const serv = services.find(s => s.id === serviceId);
-    if(!serv) return;
-    openTabServices('ServicesChildren');
-    document.getElementById('tabServicesChildren').style.display = 'block';
-    document.getElementById('currentServiceTitleChild').textContent = serv.title;
-    clearChildForm();
-    renderChildrenTable(serv.children);
-    const lab = document.getElementById('labelVariantChild');
-    if(serv.title === 'Matrícula') lab.textContent = 'Año';
-    else lab.textContent = 'Variante';
-    const sel = document.getElementById('childVariantSelect');
-    sel.innerHTML = '';
-    if(serv.variants.length === 0){
-      const opt = document.createElement('option');
-      opt.text = 'Sin variantes';
-      sel.add(opt);
-      sel.disabled = true;
-    } else if(serv.variants.length === 1){
-      sel.disabled = true;
-      const v = serv.variants[0];
-      const opt = document.createElement('option');
-      opt.value = v.id;
-      opt.textContent = v.name;
-      sel.add(opt);
-    } else {
-      sel.disabled = false;
-      serv.variants.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.id;
-        opt.textContent = v.name;
-        sel.appendChild(opt);
-      });
-    }
+function openServiceChildren(serviceTitle){
+  const serv = services.find(s => s.title === serviceTitle);
+  if(!serv) return;
+
+  editingServiceTitle = serviceTitle;
+  editingServiceId    = serv.id;
+
+  openTabServices('ServicesChildren');
+  document.getElementById('tabServicesChildren').style.display = 'block';
+  document.getElementById('currentServiceTitleChild').textContent = serv.title;
+
+  clearChildForm();
+  renderChildrenTable(serv.children);
+  const lab = document.getElementById('labelVariantChild');
+  lab.textContent = (serv.title === 'Matrícula') ? 'Año' : 'Variante';
+
+  /* llena selector de variante */
+  const sel = document.getElementById('childVariantSelect');
+  sel.innerHTML = '';
+  if(serv.variants.length === 0){
+    const opt = document.createElement('option');
+    opt.text = 'Sin variantes';
+    sel.add(opt); sel.disabled = true;
+  }else if(serv.variants.length === 1){
+    sel.disabled = true;
+    const v = serv.variants[0];
+    sel.add(new Option(v.name, v.id));
+  }else{
+    sel.disabled = false;
+    serv.variants.forEach(v => sel.add(new Option(v.name, v.id)));
   }
+}
+
 function clearChildForm(){
   editingServiceChildId = null;
   document.getElementById('childName').value   = '';
@@ -2721,270 +2909,301 @@ function createCustomDropdown(currentVal, opts, onChange) {
 
   return wrapper;
 }
+/* ==== Popup ==== */
+function openProofModal(childObj, mesKey){
+  proofChild  = childObj;
+  proofMesKey = mesKey;
+  document.getElementById('proofFile').value = '';
+  document.getElementById('proofBackdrop').style.display = 'flex';
+}
+function closeProofModal(){
+  proofChild = proofMesKey = null;
+  document.getElementById('proofBackdrop').style.display = 'none';
+}
+
+/* ==== Guardar foto ==== */
+document.getElementById('btnProofSave').onclick = () =>{
+  const fileInp = document.getElementById('proofFile');
+  if(!fileInp.files.length){ closeProofModal(); return; }
+
+  const reader = new FileReader();
+  reader.onload = e =>{
+    if(!proofChild.paymentProof) proofChild.paymentProof = {};
+    proofChild.paymentProof[proofMesKey] = {
+      data : e.target.result,               // dataURL
+      name : fileInp.files[0].name || 'comprobante.jpg'
+    };
+    saveToFirebaseServices();
+    const serv = services.find(s=>s.id===editingServiceId);
+    renderChildrenTable(serv.children, proofMesKey);
+    closeProofModal();
+  };
+  reader.readAsDataURL(fileInp.files[0]);
+};
+document.getElementById('btnProofCancel').onclick = closeProofModal;
 
 /**
  * Renderiza la tabla de niños en Servicios, usando el dropdown custom.
  */
-function renderChildrenTable(arr, mesKey = getYearMonth()) {
+/* ==============================================================
+   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
+   Incluye:
+   – dropdown de pago (Sí / No / Parcial)
+   – input de monto parcial (Enter = guardar)
+   – popup de comprobante al marcar “Sí”
+   – botones: Descargar comprobante, Borrar comprobante, Editar, Eliminar
+   ============================================================== */
+/* ==============================================================
+   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
+   Incluye:
+   – dropdown de pago (Sí / No / Parcial) con hover
+   – input de monto parcial (Enter = guardar)
+   – popup de comprobante al marcar “Sí” o completar parcial
+   – botones: Subir, Descargar, Borrar comprobante, Editar, Eliminar
+   – Eliminar niño se basa en nombre + apellido (lógica y límites intactos)
+   ============================================================== */
+function renderChildrenTable(arr, mesKey = getYearMonth()){
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
 
   const serv = services.find(s => s.id === editingServiceId);
-  if (!serv) return;
+  if(!serv) return;
+
+  const fmt = iso => iso ? iso.split('-').reverse().join('/') : '';
 
   arr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
     .filter(ch => !childrenSearchTerm ||
-      (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm))
+         (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm))
     .forEach(ch => {
       const row = tbody.insertRow();
       row.insertCell(0).textContent = ch.name;
       row.insertCell(1).textContent = ch.lastname;
-      row.insertCell(2).textContent = ch.date;
-      const variant = serv.variants.find(v => v.id === ch.variantId);
-      row.insertCell(3).textContent = variant ? variant.name : 'Sin variante';
+      row.insertCell(2).textContent = fmt(ch.date);
+      row.insertCell(3).textContent = getVariantName(ch.variantId) || '';
 
-      // ─── “Pagó pensión” ───────────────────────────
+      /* ========== Pago pensión ========== */
+      const valPago = ch.partialPayments?.[mesKey] != null
+                        ? 'partial'
+                        : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
+
       const cellPago = row.insertCell(4);
-      cellPago.style.textAlign = 'center';
-      const pagoVal = ch.partialPayments?.[mesKey] != null
-        ? 'partial'
-        : (ch.pagoPorMes?.[mesKey] ? 'yes' : 'no');
+      cellPago.style.verticalAlign = 'top';
+      const wrapPago = document.createElement('div');
+      wrapPago.style.display = 'flex';
+      wrapPago.style.flexDirection = 'column';
+      cellPago.appendChild(wrapPago);
 
-      const opts = [
-        { value: 'no',      label: 'No',      cls: 'no'      },
-        { value: 'yes',     label: 'Sí',      cls: 'yes'     },
-        { value: 'partial', label: 'Parcial', cls: 'partial' }
-      ];
+      const dd = createCustomDropdown(
+        valPago,
+        [
+          {value:'no',      label:'No'},
+          {value:'yes',     label:'Sí'},
+          {value:'partial', label:'Parcial'}
+        ],
+        estado => {
+          if(!ch.pagoPorMes)      ch.pagoPorMes      = {};
+          if(!ch.partialPayments) ch.partialPayments = {};
+          if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
 
-      const dropdown = createCustomDropdown(pagoVal, opts, val => {
-        if (val === 'yes') {
-          ch.pagoPorMes[mesKey] = true;
-          delete ch.partialPayments?.[mesKey];
-        } else if (val === 'no') {
-          ch.pagoPorMes[mesKey] = false;
-          delete ch.partialPayments?.[mesKey];
-        } else {
-          if (!ch.partialPayments) ch.partialPayments = {};
-          ch.partialPayments[mesKey] = ch.partialPayments[mesKey] || 0;
-        }
-        saveToFirebaseServices();
-        renderChildrenTable(arr, mesKey);
-      });
-
-      cellPago.appendChild(dropdown);
-
-      // Si “Parcial”, mostrar input debajo
-      if (pagoVal === 'partial') {
-        const inputMonto = document.createElement('input');
-        inputMonto.type  = 'number';
-        inputMonto.value = ch.partialPayments[mesKey];
-        Object.assign(inputMonto.style, {
-          width:        '100px',
-          border:       '1px solid #ccd3e6',
-          borderRadius: '6px',
-          padding:      '10px 12px',
-          fontSize:     '1rem',
-          textAlign:    'center',
-          display:      'block',
-          margin:       '8px auto 0'
-        });
-        inputMonto.onchange = () => {
-          const amt = parseFloat(inputMonto.value) || 0;
-          ch.partialPayments[mesKey] = amt;
-          if (amt >= ch.total) {
-            ch.pagoPorMes[mesKey] = true;
+          if(estado === 'yes'){
+            ch.pagoPorMes[mesKey]      = true;
+            ch.fechaPagoPorMes[mesKey] = new Date().toISOString().split('T')[0];
             delete ch.partialPayments[mesKey];
-          } else {
+            openProofModal(ch, mesKey);                 // popup al marcar Sí
+          }else if(estado === 'no'){
             ch.pagoPorMes[mesKey] = false;
+            delete ch.fechaPagoPorMes[mesKey];
+            delete ch.partialPayments[mesKey];
+          }else{
+            ch.pagoPorMes[mesKey]      = false;
+            delete ch.fechaPagoPorMes[mesKey];
+            ch.partialPayments[mesKey] = ch.partialPayments[mesKey] ?? 0;
           }
           saveToFirebaseServices();
           renderChildrenTable(arr, mesKey);
-        };
-        cellPago.appendChild(inputMonto);
+        });
+      wrapPago.appendChild(dd);
+
+      /* ===== input parcial ===== */
+      if(valPago === 'partial'){
+        const inp = document.createElement('input');
+        inp.type  = 'number';
+        inp.min   = '0';
+        inp.step  = '0.01';
+        inp.placeholder = 'Monto';
+        inp.value = ch.partialPayments?.[mesKey] ?? '';
+        Object.assign(inp.style,{
+          marginTop:'6px', padding:'6px 8px',
+          border:'1px solid #ccd3e6', borderRadius:'6px', width:'110px'
+        });
+        inp.addEventListener('input', () =>{
+          ch.partialPayments[mesKey] = parseFloat(inp.value) || 0;
+        });
+        inp.addEventListener('keydown', e=>{
+          if(e.key === 'Enter') inp.blur();          // guardar con Enter
+        });
+        inp.addEventListener('blur', () =>{
+          const total = ch.total || 0;
+          if(ch.partialPayments[mesKey] >= total){
+            delete ch.partialPayments[mesKey];
+            ch.pagoPorMes[mesKey]      = true;
+            ch.fechaPagoPorMes[mesKey] = new Date().toISOString().split('T')[0];
+            openProofModal(ch, mesKey);               // popup al completar
+          }
+          saveToFirebaseServices();
+          renderChildrenTable(arr, mesKey);
+        });
+        wrapPago.appendChild(inp);
       }
 
-      // ─── “Pensiones atrasadas” ─────────────────────
-      const cellAtraso = row.insertCell(5);
-      cellAtraso.style.textAlign = 'center';
-      const inputA = document.createElement('input');
-      inputA.type = 'number';
-      inputA.value = ch.pensionesAtrasadas || 0;
-      Object.assign(inputA.style, {
-        width:        '80px',
-        border:       '1px solid #ccd3e6',
-        borderRadius: '6px',
-        padding:      '10px 12px',
-        fontSize:     '1rem',
-        textAlign:    'center',
-        margin:       '0'
-      });
-      inputA.onchange = () => {
-        ch.pensionesAtrasadas = parseInt(inputA.value) || 0;
+      /* ===== Fecha pago ===== */
+      const cellFecha = row.insertCell(5);
+      const inpF = document.createElement('input');
+      inpF.type  = 'date';
+      inpF.value = ch.fechaPagoPorMes?.[mesKey] || '';
+      inpF.onchange = () =>{
+        if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+        ch.fechaPagoPorMes[mesKey] = inpF.value || undefined;
+        if(inpF.value) ch.pagoPorMes[mesKey] = true;
+        saveToFirebaseServices();
+        if(inpF.value) openProofModal(ch, mesKey);
+      };
+      cellFecha.appendChild(inpF);
+
+      /* ===== Atrasos ===== */
+      const cellAtr = row.insertCell(6);
+      const inpA = document.createElement('input');
+      inpA.type  = 'number';
+      inpA.value = ch.pensionesAtrasadas || 0;
+      inpA.style.width = '70px';
+      inpA.onchange = () =>{
+        ch.pensionesAtrasadas = +inpA.value || 0;
         saveToFirebaseServices();
       };
-      cellAtraso.appendChild(inputA);
+      cellAtr.appendChild(inpA);
 
-      // Mostrar deuda si existe
-      const deuda = ch.deudaPorMes?.[mesKey];
-      if (deuda > 0) {
-        const divDeuda = document.createElement('div');
-        divDeuda.textContent = `Adeuda S/ ${deuda.toFixed(2)}`;
-        Object.assign(divDeuda.style, {
-          marginTop:    '6px',
-          fontSize:     '0.9rem',
-          color:        '#E74C3C',
-          fontWeight:   '600'
-        });
-        cellAtraso.appendChild(divDeuda);
-      }
+      /* ========== Acciones ========== */
+      const cellAcc = row.insertCell(7);
+      const contBtn = document.createElement('div');
+      contBtn.className = 'action-group';
+      cellAcc.appendChild(contBtn);
 
-      // ─── Acciones (editar/eliminar) ────────────
-      const accCell = row.insertCell(6);
-      accCell.style.textAlign = 'center';
-      ['✎','🗑️'].forEach((icon, i) => {
-        const btn = document.createElement('button');
-        btn.textContent = icon;
-        Object.assign(btn.style, {
-          background:    i === 0 ? '#4a90e2' : '#E74C3C',
-          color:         '#fff',
-          border:        'none',
-          borderRadius:  '4px',
-          width:         '28px',
-          height:        '28px',
-          fontSize:      '1rem',
-          margin:        '0 4px',
-          lineHeight:    '1',
-          cursor:        'pointer'
-        });
-        btn.onclick = () => {
-          if (i === 0) editServiceChild(ch.id);
-          else         deleteServiceChild(ch.id);
-        };
-        accCell.appendChild(btn);
-      });
+      const hasProof = ch.paymentProof?.[mesKey];
+
+      /* Subir */
+      const bUp = document.createElement('button');
+      bUp.textContent = '⬆';
+      bUp.title = 'Subir comprobante';
+      bUp.className = 'action-btn';
+      bUp.style.background = '#4a90e2';
+      bUp.onclick = () => openProofModal(ch, mesKey);
+      contBtn.appendChild(bUp);
+
+      /* Descargar */
+      const bDown = document.createElement('button');
+      bDown.textContent = '⬇';
+      bDown.title = 'Descargar comprobante';
+      bDown.className = 'action-btn';
+      bDown.style.background = hasProof ? '#3BB273' : '#888';
+      bDown.onclick = () =>{
+        if(!hasProof){ alert('No hay comprobante'); return; }
+        const a = document.createElement('a');
+        a.href = hasProof.data;
+        a.download = hasProof.name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      };
+      contBtn.appendChild(bDown);
+
+      /* Borrar comprobante */
+      const bErase = document.createElement('button');
+      bErase.textContent = '✖';
+      bErase.title = 'Borrar comprobante';
+      bErase.className = 'action-btn';
+      bErase.style.background = hasProof ? '#E74C3C' : '#888';
+      bErase.onclick = () => borrarProof(ch, mesKey);
+      contBtn.appendChild(bErase);
+
+      /* Editar niño */
+      const bEdit = document.createElement('button');
+      bEdit.textContent = '✎';
+      bEdit.title = 'Editar niño';
+      bEdit.className = 'action-btn';
+      bEdit.style.background = '#4a90e2';
+      bEdit.onclick = () => editServiceChild(ch.id);
+      contBtn.appendChild(bEdit);
+
+      /* Eliminar niño por nombre + apellido */
+      const bDel = document.createElement('button');
+      bDel.textContent = '🗑️';
+      bDel.title = 'Eliminar niño';
+      bDel.className = 'action-btn';
+      bDel.style.background = '#E74C3C';
+      bDel.onclick = () => deleteServiceChildByName(ch.name, ch.lastname);
+      contBtn.appendChild(bDel);
     });
 }
-function agregarOguardarChild(){
-  if(!editingServiceId){
-    alert('No hay servicio seleccionado');
-    return;
-  }
+function deleteServiceChildByName(name, lastname){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
 
-  /* ---------- datos del formulario ---------- */
-  const name     = document.getElementById('childName').value.trim().toUpperCase();
-  const lastname = document.getElementById('childLastname').value.trim().toUpperCase();
-  const day      = document.getElementById('childDay').value.trim();      // ← solo día
-  const sel      = document.getElementById('childVariantSelect');
+  /* buscamos la coincidencia */
+  const idx = serv.children.findIndex(c =>
+    c.name === name && c.lastname === lastname
+  );
+  if(idx === -1){
+    alert("No se encontró ese niño en el servicio.");
+    return;
+  }
+  const ch  = serv.children[idx];
 
-  let variantId = null;
-  if(!sel.disabled)      variantId = parseInt(sel.value);
-  else if(serv.variants.length===1) variantId = serv.variants[0].id;
+  /* 1) confirmación */
+  const full = `${ch.name} ${ch.lastname}`.trim();
+  if(!confirm(`¿Seguro que deseas eliminar a ${full}?`)) return;
 
-  if(!name || !lastname || !day){
-    alert('Completa todos los campos');
+  /* 2) límite anti-borrado masivo */
+  if(!_canDelete(1)){
+    alert("Límite de eliminaciones alcanzado (máx. 3 niños por minuto).");
     return;
   }
 
-  /* ①  mes elegido en el combo “Mes” */
-  const mesSel = document.getElementById('servicesMes').value;   // "YYYY‑MM"
+  /* 3) mes que el usuario está viendo */
+  const mesSel = document.getElementById('servicesMes').value || getYearMonth();
 
-  /* ②  fecha completa y rango de meses a generar */
-  const dateIn = `${mesSel}-${String(parseInt(day)).padStart(2,'0')}`;
-
-  const pagoPorMes = {};
-  let [y,m] = mesSel.split('-').map(Number);
-  const [cy,cm] = getYearMonth().split('-').map(Number);
-  while (y<cy || (y===cy && m<=cm)){
-    const key = `${y}-${String(m).padStart(2,'0')}`;
-    pagoPorMes[key] = false;           // aún no pagado
-    m++; if(m===13){m=1; y++;}
-  }
-  const mesesGenerados = Object.keys(pagoPorMes).length;
-
-  /* ③  creación o edición */
-  if(editingServiceChildId === null){
-    const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
-    serv.children.push({
-      id : nextServiceChildId++,
-      name, lastname,
-      date : dateIn,
-      variantId,
-      mesRegistro : mesSel,
-      mesBaja     : null,
-      total       : precio,
-      ficha       : {},
-      fichaCompleta : false,
-      pagoPorMes,
-      pensionesAtrasadas : mesesGenerados,
-      lastPagoCheck : getYearMonth()
-    });
+  /* 4) eliminación física o baja lógica */
+  if(ch.mesRegistro === mesSel){
+    serv.children.splice(idx,1);   // remove definitivo
   }else{
-    const idx = serv.children.findIndex(c => c.id === editingServiceChildId);
-    if(idx >= 0){
-      const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
-      Object.assign(serv.children[idx],{
-        name, lastname,
-        date : dateIn,
-        variantId,
-        total: precio
-      });
-    }
-    editingServiceChildId = null;
-    document.getElementById('btnChildPrincipal').textContent = 'Agregar Niño';
+    ch.mesBaja = mesSel;           // baja lógica
   }
 
-  clearChildForm();
-  renderChildrenTable(serv.children, mesSel);
   saveToFirebaseServices();
+  renderChildrenTable(serv.children, mesSel);
 }
 
 function editServiceChild(childId){
-  const serv = services.find(s => s.id === editingServiceId);
+  const serv = services.find(s=>s.id===editingServiceId);
   if(!serv) return;
-  const ch = serv.children.find(c => c.id === childId);
+  const ch = serv.children.find(c=>c.id===childId);
   if(!ch) return;
 
   editingServiceChildId = childId;
 
   document.getElementById('childName').value      = ch.name;
   document.getElementById('childLastname').value  = ch.lastname;
+  document.getElementById('childDniPadre').value  = ch.dniPadre || '';     // ← NUEVO
 
-  /* mostramos solo el día (dd) */
-  const [, , dd] = ch.date.split('-');            // "YYYY‑MM‑DD"
+  const [, , dd] = ch.date.split('-');  // YYYY-MM-DD
   document.getElementById('childDay').value = parseInt(dd,10);
 
-  /* variante */
   const sel = document.getElementById('childVariantSelect');
   if(!sel.disabled && ch.variantId) sel.value = ch.variantId;
 
   document.getElementById('btnChildPrincipal').textContent = 'Guardar Niño';
 }
 
-function deleteServiceChild(childId){
-  const serv = services.find(s => s.id === editingServiceId);
-  if(!serv) return;
 
-  const ch = serv.children.find(c => c.id === childId);
-  if(!ch) return;
 
-  // mes visible en el selector «Mes:»
-  const mesActual = document.getElementById('servicesMes').value || getYearMonth();
-
-  if(!confirm(`Dar de baja a ${ch.name} a partir de ${mesActual}?`)) return;
-
-  /* ⇢ Queremos que todavía aparezca en el mes que estamos viendo
-     y desaparezca desde el siguiente.                          */
-  let [yy, mm] = mesActual.split('-').map(Number);
-  mm++; if(mm === 13){ mm = 1; yy++; }
-
-  ch.mesBaja = mesActual;            // deja de mostrarse en el mes actual
-
-saveToFirebaseServices();
-renderChildrenTable(serv.children, mesActual);
-}
 
   function doneChildren(){
     openTabServices('ServicesMain');
@@ -3189,49 +3408,6 @@ function renderFinanzas() {
   function calcularEgresosTotales(egresos){
     return egresos.reduce((acc, e) => acc + (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)), 0);
   }
-function renderTablaEgresos(egresos) {
-  // 1) Tomar el valor del select
-  const tipoSelect = document.getElementById("filtroEgresosTipo").value;
-  const subtipoSelect = document.getElementById("filtroEgresosSubtipo").value;
-
-  // 2) Filtrar localmente (solo afecta esta PC)
-  let egresosFiltrados = egresos;
-  if(tipoSelect) {
-    egresosFiltrados = egresosFiltrados.filter(e => e.tipo === tipoSelect);
-  }
-  if(subtipoSelect) {
-    egresosFiltrados = egresosFiltrados.filter(e => e.subtipo === subtipoSelect);
-  }
-
-  // 3) Pintar la tabla con egresosFiltrados
-  const tbody = document.getElementById('tablaEgresos').querySelector('tbody');
-  tbody.innerHTML = '';
-  egresosFiltrados.forEach(e => {
-    const row = tbody.insertRow();
-    row.insertCell(0).textContent = e.nombre;
-    row.insertCell(1).textContent = e.tipo;
-    row.insertCell(2).textContent = e.subtipo;
-    row.insertCell(3).textContent = e.cantidad;
-    row.insertCell(4).textContent = e.descuento;
-    row.insertCell(5).textContent = (parseFloat(e.cantidad) - parseFloat(e.descuento || 0)).toFixed(2);
-
-    const accCell = row.insertCell(6);
-    const btnEd = document.createElement('button');
-    btnEd.textContent = 'Editar';
-    btnEd.onclick = () => editarEgreso(e.id);
-    accCell.appendChild(btnEd);
-
-    const btnDel = document.createElement('button');
-    btnDel.textContent = 'Eliminar';
-    btnDel.style.marginLeft = '5px';
-    btnDel.onclick = () => eliminarEgreso(e.id);
-    accCell.appendChild(btnDel);
-  });
-}
-/* -----------------------------------------------------------
-   Devuelve arrays listos para Chart.js usando resumenMensual
-   keyName = 'netoTotales' | 'egresosTotales' | 'brutoTotales' | …
------------------------------------------------------------ */
 function obtenerLineal(keyName) {
   const labels = [];
   const datos  = [];
@@ -3251,6 +3427,110 @@ function obtenerLineal(keyName) {
   });
   return { labels, datos };
 }
+/* ============================================================== */
+/* ===  TABLA EGRESOS – acciones por Nombre + Cantidad + Mes  === */
+/* ============================================================== */
+
+/* Devuelve el índice del egreso que coincide CON lo que se ve   */
+function indexEgreso(nombre, cantidad, anio, mes){
+  return finanzasData.egresos.findIndex(e =>
+    e.nombre   === nombre &&
+    Number(e.cantidad) === Number(cantidad) &&
+    e.anio     === anio &&
+    e.mes      === mes
+  );
+}
+
+/* ------------ ELIMINAR ------------ */
+function eliminarEgresoComp(nombre, cantidad, anio, mes){
+  const idx = indexEgreso(nombre, cantidad, anio, mes);
+  if(idx === -1){
+    alert("No se encontró el egreso.");
+    return;
+  }
+  const eg = finanzasData.egresos[idx];
+  const mesTxt = `${String(mes).padStart(2,'0')}-${anio}`;
+  if(!confirm(`¿Eliminar “${eg.nombre}” de S/ ${eg.cantidad} (mes ${mesTxt})?`)) return;
+
+  finanzasData.egresos.splice(idx,1);
+  renderFinanzas();     // refresca tablas y tarjetas
+  saveFinanzasData();   // guarda en Firebase
+}
+
+
+
+function borrarProof(ch, mesKey){
+  if(!ch.paymentProof?.[mesKey]){
+    alert("No hay comprobante para este mes");
+    return;
+  }
+  if(!confirm("¿Eliminar comprobante?")) return;
+  delete ch.paymentProof[mesKey];
+  saveToFirebaseServices();
+  const serv = services.find(s=>s.id===editingServiceId);
+  renderChildrenTable(serv.children, mesKey);
+}
+/* ------------ EDITAR ------------   */
+/* Carga en el formulario el egreso seleccionado                    */
+function editarEgresoComp(nombre, cantidad, anio, mes){
+  const idx = indexEgreso(nombre, cantidad, anio, mes);
+  if(idx === -1){
+    alert("No se encontró el egreso.");
+    return;
+  }
+  const eg = finanzasData.egresos[idx];
+
+  editingEgresoId = eg.id ?? null;          // por si tu lógica interna usa id
+  document.getElementById('egresoNombre').value    = eg.nombre;
+  document.getElementById('egresoTipo').value      = eg.tipo;
+  document.getElementById('egresoSubtipo').value   = eg.subtipo;
+  document.getElementById('egresoCantidad').value  = eg.cantidad;
+  document.getElementById('egresoDescuento').value = eg.descuento || 0;
+}
+
+/* ------------ PINTAR TABLA ------------ */
+function renderTablaEgresos(egresos){
+  const tipoSel    = document.getElementById("filtroEgresosTipo").value;
+  const subtipoSel = document.getElementById("filtroEgresosSubtipo").value;
+
+  let rows = egresos;
+  if(tipoSel)    rows = rows.filter(e => e.tipo    === tipoSel);
+  if(subtipoSel) rows = rows.filter(e => e.subtipo === subtipoSel);
+
+  const tbody = document.querySelector('#tablaEgresos tbody');
+  tbody.innerHTML = '';
+
+  rows.forEach(e => {
+    const tr = tbody.insertRow();
+    tr.insertCell(0).textContent = e.nombre;
+    tr.insertCell(1).textContent = e.tipo;
+    tr.insertCell(2).textContent = e.subtipo;
+    tr.insertCell(3).textContent = Number(e.cantidad).toFixed(2);
+    tr.insertCell(4).textContent = Number(e.descuento || 0).toFixed(2);
+    tr.insertCell(5).textContent = (
+      Number(e.cantidad) - Number(e.descuento || 0)
+    ).toFixed(2);
+
+    /* BOTONES ACCIÓN – usamos los 4 datos clave */
+    const tdAcc = tr.insertCell(6),
+          key   = [e.nombre, e.cantidad, e.anio, e.mes]; // pack de claves
+
+    /* Editar */
+    const bEd = document.createElement('button');
+    bEd.textContent = 'Editar';
+    bEd.onclick = () => editarEgresoComp(...key);
+    tdAcc.appendChild(bEd);
+
+    /* Eliminar */
+    const bDel = document.createElement('button');
+    bDel.textContent = 'Eliminar';
+    bDel.style.marginLeft = '5px';
+    bDel.onclick = () => eliminarEgresoComp(...key);
+    tdAcc.appendChild(bDel);
+  });
+}
+
+
 
 function renderTablaIngresos(mesKey) {
   const tbody      = document.querySelector('#tablaIngresos tbody');
@@ -3321,64 +3601,62 @@ function renderTablaIngresos(mesKey) {
     cell.style.padding = '12px';
   }
 }
+
+
+/* -------------------------------------------------
+   EDITAR EGRESO  – carga el registro en el formulario
+   -------------------------------------------------*/
+function editarEgreso(id){
+  const eg = finanzasData.egresos.find(e => e.id === id);
+  if (!eg) return;                // seguridad
+
+  editingEgresoId = id;           // <<<  usa la única variable global
+
+  document.getElementById('egresoNombre').value    = eg.nombre;
+  document.getElementById('egresoTipo').value      = eg.tipo;
+  document.getElementById('egresoSubtipo').value   = eg.subtipo;
+  document.getElementById('egresoCantidad').value  = eg.cantidad;
+  document.getElementById('egresoDescuento').value = eg.descuento || 0;
+}
+
 function agregarEgreso(){
   const nombre    = document.getElementById('egresoNombre').value.trim();
   const tipo      = document.getElementById('egresoTipo').value;
   const subtipo   = document.getElementById('egresoSubtipo').value;
-  const cantidad  = document.getElementById('egresoCantidad').value;
-  const descuento = document.getElementById('egresoDescuento').value || 0;
+  const cantidad  = parseFloat(document.getElementById('egresoCantidad').value);
+  const descuento = parseFloat(document.getElementById('egresoDescuento').value) || 0;
 
-  if(!nombre || !tipo || !subtipo || !cantidad){
+  if(!nombre || !tipo || !subtipo || isNaN(cantidad)){
     alert("Completa todos los campos del egreso");
     return;
   }
 
-  /* mes y año actuales del selector */
-  const [anioStr, mesStr] = document.getElementById('finanzasMes').value.split('-');
-  const anio = parseInt(anioStr,10);
-  const mes  = parseInt(mesStr,10);
+  /* Mes / Año visibles en el combo del módulo Finanzas */
+  const [aStr, mStr] = document.getElementById('finanzasMes').value.split('-');
+  const anio = +aStr, mes = +mStr;
 
-  if (editingEgresoId !== null){               // ——— EDITAR ———
+  if(editingEgresoId !== null){                // ---- EDITAR ----
     const eg = finanzasData.egresos.find(e => e.id === editingEgresoId);
-    if (eg){
+    if(eg){
       Object.assign(eg,{ nombre, tipo, subtipo, cantidad, descuento, anio, mes });
     }
-    editingEgresoId = null;
-  }else{                                       // ——— NUEVO ———
+    editingEgresoId = null;                    // reset
+  }else{                                       // ---- NUEVO ----
     finanzasData.egresos.push({
       id: nextEgresoId++,
-      nombre, tipo, subtipo,
-      cantidad, descuento,
-      anio, mes
+      nombre, tipo, subtipo, cantidad, descuento, anio, mes
     });
   }
 
-  /* limpiar formulario */
-  document.getElementById('egresoNombre').value   = '';
-  document.getElementById('egresoTipo').value     = '';
-  document.getElementById('egresoSubtipo').value  = '';
-  document.getElementById('egresoCantidad').value = '';
-  document.getElementById('egresoDescuento').value= '';
+  /* limpia formulario */
+  ['egresoNombre','egresoTipo','egresoSubtipo','egresoCantidad','egresoDescuento']
+    .forEach(id => document.getElementById(id).value = '');
 
-  renderFinanzas();     // refresca tablas y totales
-  saveFinanzasData();   // persiste en Firebase
-}
-
-function editarEgreso(id){
-  const eg = finanzasData.egresos.find(e=>e.id===id);
-  if(!eg) return;
-
-  /* rellenamos el formulario … */
-  editingEgresoId = id;                        // ← NUEVO
+  renderFinanzas();      // refresca tablas/gráficos
+  saveFinanzasData();    // guarda en Firebase
 }
 
 
-  // Funciones para actualizar gráficos (placeholders)
-/**
- * Actualiza todos los gráficos de Finanzas sin lanzar errores
- * si window.chartXXX no es un Chart válido, y preservando
- * los colores originales (verde/rojo para Pagado/Falta, etc.).
- */
 function actualizarGraficosFinanzas() {
   const mesSeleccionado = document.getElementById('finanzasMes').value;
 
