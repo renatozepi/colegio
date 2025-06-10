@@ -13,21 +13,51 @@
   <style>
     /* =================== ESTILOS GENERALES =================== */
 #proofBackdrop{
-  position:fixed; inset:0; background:rgba(0,0,0,.45);
-  display:none; align-items:center; justify-content:center; z-index:10;
+  position:fixed; inset:0; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55); z-index:1000;
 }
+
+/* tarjeta */
 #proofModal{
-  background:#fff; padding:24px 28px; border-radius:8px; width:320px;
-  box-shadow:0 4px 12px rgba(0,0,0,.25); text-align:center;
+  width: min(90%, 400px);
+  background:#ffffff;
+  border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.25);
+  padding:28px 32px;
+  text-align:center;
+  animation: zoom .25s ease;
 }
-#proofModal h3{margin-top:0; color:#1a2e55;}
-#proofModal input[type=file]{margin:18px 0;}
+@keyframes zoom{
+  from{ transform:scale(.8); opacity:.3; }
+  to  { transform:scale(1); opacity:1;  }
+}
+#proofModal h3{
+  margin:0 0 18px;
+  font-size:1.2rem;
+  color:#1a2e55;
+  white-space:normal;         /* asegura que no desborde */
+}
+
+#proofModal input[type=file]{
+  width:100%;
+  margin-bottom:20px;
+}
+
 #proofModal button{
-  margin:0 6px; padding:8px 22px; border:none; border-radius:6px;
-  font-weight:600; cursor:pointer;
+  margin:0 6px;
+  padding:10px 24px;
+  border:none;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  color:#fff;
+  transition:filter .15s;
 }
-#btnProofSave{background:#4a90e2; color:#fff;}
-#btnProofCancel{background:#cccccc;}
+#proofModal button:hover{ filter:brightness(1.15); }
+
+#btnProofSave{ background:#4a90e2; }
+#btnProofCancel{ background:#999; }
 #logoutContainer {
   position: fixed;
   top: 15px;
@@ -4744,6 +4774,52 @@ function filtrarIngresos() {
   /**************************************************************
    * EXPOSE FUNCTIONS TO GLOBAL (after DOMContentLoaded)
    **************************************************************/
+/* =========================================================
+   ENTER universal  – versión ampliada
+   ========================================================= */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+
+  const el  = e.target;
+  const tag = el.tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
+
+  /* contenedor lógico del formulario o zona de búsqueda */
+  const container = el.closest(
+    '.form-section, .finanzas-form, .create-macro, .create-service,' +
+    '.children-search, .matriculas-search'
+  );
+
+  /* 1. si dentro hay un botón “principal”, dispararlo */
+  if (container){
+    const selectors = [
+      'button[id^="btn"]',
+      'button[type="button"]',
+      'button:not([type])',
+      '.listo-btn',
+      '.matriculas-btn'
+    ].join(', ');
+    const btn = container.querySelector(selectors);
+    if (btn){
+      e.preventDefault();   // evitamos submit / beep
+      btn.click();
+      return;
+    }
+  }
+
+  /* 2. si no hay botón → enfocar siguiente input visible */
+  if (container){
+    const focusables = Array.from(container.querySelectorAll('input, select, textarea'))
+      .filter(n => !n.disabled && n.offsetParent);
+    const idx = focusables.indexOf(el);
+    if (idx > -1 && idx < focusables.length - 1){
+      e.preventDefault();
+      focusables[idx + 1].focus();
+    }
+  }
+}, true);
+
+   
    document.addEventListener('DOMContentLoaded', () => {
     window.goToMacros = goToMacros;
     window.goToServices = goToServices;
