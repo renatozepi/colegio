@@ -1768,10 +1768,21 @@ function exportServiceExcel(type){
     const fechasPag = Object.values(ch.fechaPagoPorMes||{})
                       .map(toDDMMYYYY).join(', ');
 
-    const partialDebt = Object.values(ch.deudaPorMes||{})
-                       .reduce((s,v)=>s+v,0);
-    const overdueDebt = (ch.pensionesAtrasadas||0)*(ch.total||0);
-    const totalDebt   = partialDebt + overdueDebt;
+const partialDebt = Object.values(ch.deudaPorMes || {}).reduce((s,v)=>s+v,0);
+const overdueDebt = (ch.pensionesAtrasadas || 0) * (ch.total || 0);
+
+/* ▲ deuda del MES que se está exportando  */
+let currentDebt = 0;
+if (ch.partialPayments?.[currentYM] != null) {
+  /* pago parcial → resta lo abonado */
+  currentDebt = (ch.total || 0) - ch.partialPayments[currentYM];
+} else {
+  /* “Sí” o “No” cuentan la pensión completa */
+  currentDebt = ch.total || 0;
+}
+
+const totalDebt = partialDebt + overdueDebt + currentDebt;
+
 
     let paidSum = 0;
     Object.values(ch.partialPayments||{}).forEach(p=>paidSum+=p);
@@ -1916,34 +1927,32 @@ async function goToFinanzas(){
 
 function goBack() {
   screenStack.pop(); 
-  // Saca la última pantalla de la pila
 
-  // Primero, ocultar/limpiar todos los contenedores
+  /* Ocultar / limpiar todo */
   document.getElementById('landingPage').classList.add('hidden');
   document.getElementById('macrosContainer').classList.remove('activeContainer');
   document.getElementById('servicesContainer').classList.remove('activeContainer');
   document.getElementById('matriculasContainer').classList.remove('activeContainer');
   document.getElementById('finanzasContainer').classList.remove('activeContainer');
-  // IMPORTANTE: oculta también el de Usuarios
-  document.getElementById('usersContainer').style.display = 'none'; 
-  // O document.getElementById('usersContainer').classList.remove('activeContainer');
 
-  // Según la última pantalla en la pila, la muestras
+  /* ➡ OCULTA TAMBIÉN el de Usuarios */
+  const uc = document.getElementById('usersContainer');
+  uc.classList.remove('activeContainer');      // ⬅ **<– nueva línea**
+  uc.style.display = 'none';
+
+  /* Mostrar la pantalla correspondiente */
   const current = screenStack[screenStack.length - 1] || "landing";
-  if (current === "landing") {
-    document.getElementById('landingPage').classList.remove('hidden');
-  } else if (current === "macros") {
-    document.getElementById('macrosContainer').classList.add('activeContainer');
-  } else if (current === "services") {
-    document.getElementById('servicesContainer').classList.add('activeContainer');
-  } else if (current === "matriculas") {
-    document.getElementById('matriculasContainer').classList.add('activeContainer');
-  } else if (current === "finanzas") {
-    document.getElementById('finanzasContainer').classList.add('activeContainer');
-  } else if (current === "users") {
-    document.getElementById('usersContainer').style.display = 'block';
-  }
+  if (current === "landing")          document.getElementById('landingPage').classList.remove('hidden');
+  else if (current === "macros")      document.getElementById('macrosContainer').classList.add('activeContainer');
+  else if (current === "services")    document.getElementById('servicesContainer').classList.add('activeContainer');
+  else if (current === "matriculas")  document.getElementById('matriculasContainer').classList.add('activeContainer');
+  else if (current === "finanzas")    document.getElementById('finanzasContainer').classList.add('activeContainer');
+  else if (current === "users")       uc.style.removeProperty('display');
+
+  /* vuelve al tope de la página */
+  window.scrollTo(0,0);
 }
+
 
 
   function goBackFicha(){
