@@ -12,6 +12,31 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     /* =================== ESTILOS GENERALES =================== */
+#appLoader{
+  position:fixed; inset:0;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.98);
+  z-index:2000;        /* por encima de todo */
+  opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+#appLoader.active{
+display:flex;              /* se muestra y ocupa la viewport */
+align-items:center;        /* (movidos aquí)                 */
+justify-content:center;
+  opacity:1;
+  pointer-events:all;
+}
+
+/* spinner */
+.loader-ring{
+  width:64px; height:64px;
+  border:8px solid #4a90e2;
+  border-top-color:transparent;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
 #proofBackdrop{
   position:fixed; inset:0; display:none;
   align-items:center; justify-content:center;
@@ -89,7 +114,6 @@
       min-height: 100vh;
     }
     .hidden { display: none !important; }
-    .active { display: block !important; }
 
 
 
@@ -932,6 +956,9 @@ button.day-btn,
   </style>
 </head>
 <body>
+<div id="appLoader">
+  <div class="loader-ring"></div>
+</div>
   <div id="logoutContainer" style="position:absolute; top:15px; right:15px;">
     <button onclick="logout()" style="background-color:#f1c40f; border:none; border-radius:6px; padding:8px; font-weight:600; cursor:pointer;">
       Cerrar Sesión
@@ -1560,6 +1587,61 @@ function deleteServiceChild(childId){
   saveToFirebaseServices();
   renderChildrenTable(serv.children, mesSel);
 }
+/* =====================================================
+   0.  Loader helpers  –  fade-in  ➜  callback  ➜  fade-out
+   ===================================================== */
+function ensureLoader(){
+  let l = document.getElementById('appLoader');
+  if(!l){                                   // nunca debería ocurrir,
+    console.warn('Se creó #appLoader en caliente');
+    const div = document.createElement('div');
+    div.id = 'appLoader';
+    div.innerHTML = '<div class="loader-ring"></div>';
+    document.body.appendChild(div);
+    l = div;
+  }
+  return l;
+}
+function fadeInLoader(){
+  return new Promise(res=>{
+const l = ensureLoader();
+l.classList.add('active');          // ahora pasa de display:none a flex
+ l.style.opacity = '0';              // empezamos en 0 opacidad
+requestAnimationFrame(()=>{         // siguiente frame → comenzamos fade-in
+  l.style.opacity = '1';            // 0  →  1   (animado)
+      const h = e=>{
+        if(e.propertyName!=='opacity') return;
+        l.removeEventListener('transitionend',h);
+        res();                          // overlay ya 100 % opaco
+      };
+      l.addEventListener('transitionend',h);
+    });
+  });
+}
+function fadeOutLoader(){
+  return new Promise(res=>{
+    const l = ensureLoader();
+    l.style.opacity = '0';              // ➜   1 → 0
+    const h = e=>{
+      if(e.propertyName!=='opacity') return;
+      l.removeEventListener('transitionend',h);
+      l.classList.remove('active');     // oculta overlay
+      res();
+    };
+    l.addEventListener('transitionend',h);
+  });
+}
+/* wrapper ⇒ garantiza fade-in, ejecuta callback (sync o async)
+   y luego fade-out                                            */
+async function withLoader(cb){
+  await fadeInLoader();       // ① sube overlay
+  try{ await cb(); }          // ② ejecuta tu lógica
+  finally{ await fadeOutLoader(); }   // ③ baja overlay
+}
+
+/* Para compatibilidad con llamadas existentes --------------- */
+function showLoader(){ document.getElementById('appLoader').classList.add('active'); document.getElementById('appLoader').style.opacity='1'; }
+function hideLoader(){ document.getElementById('appLoader').style.opacity='0'; document.getElementById('appLoader').classList.remove('active'); }
 
 /* ---------- ELIMINAR SERVICIO COMPLETO ---------- */
 function deleteService(serviceTitle){
@@ -1613,19 +1695,18 @@ if (!currentUser.username) {
   let subtiposEgresos = ["Planilla", "Agua", "Luz", "Internet"]; 
   let editingEgresoId = null;
 
-async function goToMacros() {
-  // Verificar permiso (si lo deseas)
-  if (!currentUser || !currentUser.permisos.macros) {
-    alert("No tienes permiso para acceder a Macros.");
-    return;
+async function goToMacros(){
+  if(!currentUser || !currentUser.permisos.macros){
+    alert("No tienes permiso para acceder a Macros."); return;
   }
-  // Ya no necesitamos ocultar el loginPage, porque no existe en el dashboard
-  document.getElementById('landingPage').classList.add('hidden');
-  document.getElementById('macrosContainer').classList.add('activeContainer');
-  
-  // Carga de datos y demás
-  await initMacros();
+  await withLoader(async ()=>{
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('macrosContainer').classList.add('activeContainer');
+    screenStack.push("macros");
+    await initMacros();
+  });
 }
+
 // 2) Autoajusta el ancho de columnas
 function autoFitColumns(ws, data) {
   const cols = [];
@@ -1796,39 +1877,43 @@ async function saveFinanzasData() {
 
 async function goToServices(){
   if(!currentUser || !currentUser.permisos.services){
-    alert("No tienes permiso para acceder a Servicios.");
-    return;
+    alert("No tienes permiso para acceder a Servicios."); return;
   }
+  await withLoader(async ()=>{
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('servicesContainer').classList.add('activeContainer');
     screenStack.push("services");
     await initServices();
-  }
+  });
+}
+
 async function goToMatriculas(){
   if(!currentUser || !currentUser.permisos.matriculas){
-    alert("No tienes permiso para acceder a Matrículas.");
-    return;
+    alert("No tienes permiso para acceder a Matrículas."); return;
   }
+  await withLoader(async ()=>{
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('matriculasContainer').classList.add('activeContainer');
     screenStack.push("matriculas");
     await initMatriculas();
-  }
-async function goToFinanzas() {
-  if (!currentUser || !currentUser.permisos.finanzas) {
-    alert("No tienes permiso para acceder a Finanzas.");
-    return;
-  }
-  document.getElementById('landingPage').classList.add('hidden');
-  document.getElementById('finanzasContainer').classList.add('activeContainer');
-  screenStack.push("finanzas");
-
-  await loadFromFirebaseServices();
-  await initFinanzas();
-
-  // Suscripción en tiempo real
-  initFinanzasRealTime();
+  });
 }
+
+async function goToFinanzas(){
+  if(!currentUser || !currentUser.permisos.finanzas){
+    alert("No tienes permiso para acceder a Finanzas."); return;
+  }
+  await withLoader(async ()=>{
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('finanzasContainer').classList.add('activeContainer');
+    screenStack.push("finanzas");
+
+    await loadFromFirebaseServices();
+    await initFinanzas();
+    initFinanzasRealTime();
+  });
+}
+
 function goBack() {
   screenStack.pop(); 
   // Saca la última pantalla de la pila
@@ -2420,37 +2505,30 @@ function generarTxt() {
 
 
 
-function openTabMacros(tabName) {
-  // 1) Validar permisos antes de desactivar nada
-  if (tabName === 'Macros') {
-    // Necesita permisos.macros
-    if (!currentUser.permisos.macros) {
-      alert("No tienes permiso para la pestaña principal de Macros.");
-      return;
-    }
-  } else if (tabName === 'Ninos') {
-    // Necesita permisos.macrosNinos
-    if (!currentUser.permisos.macrosNinos) {
-      alert("No tienes permiso para la pestaña 'Registrar Niños'.");
-      return;
-    }
+function openTabMacros(tabName){
+  if(tabName==='Macros' && !currentUser.permisos.macros){
+    alert("No tienes permiso para la pestaña principal de Macros."); return;
+  }
+  if(tabName==='Ninos'  && !currentUser.permisos.macrosNinos){
+    alert("No tienes permiso para 'Registrar Niños'."); return;
   }
 
-  // 2) Si pasó la validación, quitamos las clases de todas las pestañas
-  document.getElementById('contentMacros').classList.remove('activeTabContent');
-  document.getElementById('contentNinos').classList.remove('activeTabContent');
-  document.getElementById('tabMacros').classList.remove('activeTab');
-  document.getElementById('tabNinos').classList.remove('activeTab');
+  withLoader(()=>{          /* ← animación */
+    document.getElementById('contentMacros').classList.remove('activeTabContent');
+    document.getElementById('contentNinos').classList.remove('activeTabContent');
+    document.getElementById('tabMacros').classList.remove('activeTab');
+    document.getElementById('tabNinos').classList.remove('activeTab');
 
-  // 3) Activamos la pestaña solicitada
-  if (tabName === 'Macros') {
-    document.getElementById('contentMacros').classList.add('activeTabContent');
-    document.getElementById('tabMacros').classList.add('activeTab');
-  } else if (tabName === 'Ninos') {
-    document.getElementById('contentNinos').classList.add('activeTabContent');
-    document.getElementById('tabNinos').classList.add('activeTab');
-  }
+    if(tabName==='Macros'){
+      document.getElementById('contentMacros').classList.add('activeTabContent');
+      document.getElementById('tabMacros').classList.add('activeTab');
+    }else{
+      document.getElementById('contentNinos').classList.add('activeTabContent');
+      document.getElementById('tabNinos').classList.add('activeTab');
+    }
+  });
 }
+
 
   /**************************************************************
    * ADMIN SERVICES
@@ -2496,45 +2574,30 @@ function openTabMacros(tabName) {
     }
     MATRICULA_ID = mat.id;
   }
-function openTabServices(tabName) {
-  // 1) Validar antes de quitar clases
-  if (tabName === 'ServicesMain') {
-    if (!currentUser.permisos.services) {
-      alert("No tienes permiso para la pestaña principal de Servicios.");
-      return;
-    }
-  } else if (tabName === 'ServicesVariants') {
-    if (!currentUser.permisos.servicesVariants) {
-      alert("No tienes permiso para 'Creador de Variantes'.");
-      return;
-    }
-  } else if (tabName === 'ServicesChildren') {
-    if (!currentUser.permisos.servicesChildren) {
-      alert("No tienes permiso para 'Administrar Niños' en Servicios.");
-      return;
-    }
-  }
+function openTabServices(tabName){
+  if(tabName==='ServicesMain'     && !currentUser.permisos.services       ){ alert("No tienes permiso."); return; }
+  if(tabName==='ServicesVariants' && !currentUser.permisos.servicesVariants){ alert("No tienes permiso."); return; }
+  if(tabName==='ServicesChildren' && !currentUser.permisos.servicesChildren){ alert("No tienes permiso."); return; }
 
-  // 2) Quitar clases de todas las pestañas
-  document.getElementById('contentServicesMain').classList.remove('activeTabContent');
-  document.getElementById('contentServicesVariants').classList.remove('activeTabContent');
-  document.getElementById('contentServicesChildren').classList.remove('activeTabContent');
-  document.getElementById('tabServicesMain').classList.remove('activeTab');
-  document.getElementById('tabServicesVariants').classList.remove('activeTab');
-  document.getElementById('tabServicesChildren').classList.remove('activeTab');
+  withLoader(()=>{   /* animación de fade */
+    ['contentServicesMain','contentServicesVariants','contentServicesChildren']
+      .forEach(id => document.getElementById(id).classList.remove('activeTabContent'));
+    ['tabServicesMain','tabServicesVariants','tabServicesChildren']
+      .forEach(id => document.getElementById(id).classList.remove('activeTab'));
 
-  // 3) Agregar la que corresponde
-  if (tabName === 'ServicesMain') {
-    document.getElementById('contentServicesMain').classList.add('activeTabContent');
-    document.getElementById('tabServicesMain').classList.add('activeTab');
-  } else if (tabName === 'ServicesVariants') {
-    document.getElementById('contentServicesVariants').classList.add('activeTabContent');
-    document.getElementById('tabServicesVariants').classList.add('activeTab');
-  } else if (tabName === 'ServicesChildren') {
-    document.getElementById('contentServicesChildren').classList.add('activeTabContent');
-    document.getElementById('tabServicesChildren').classList.add('activeTab');
-  }
+    if(tabName==='ServicesMain'){
+      document.getElementById('contentServicesMain').classList.add('activeTabContent');
+      document.getElementById('tabServicesMain').classList.add('activeTab');
+    }else if(tabName==='ServicesVariants'){
+      document.getElementById('contentServicesVariants').classList.add('activeTabContent');
+      document.getElementById('tabServicesVariants').classList.add('activeTab');
+    }else{
+      document.getElementById('contentServicesChildren').classList.add('activeTabContent');
+      document.getElementById('tabServicesChildren').classList.add('activeTab');
+    }
+  });
 }
+
 
 
 /* ==========================================================
@@ -3859,46 +3922,30 @@ function actualizarGraficosFinanzas() {
 
 
 
-function openTabFinanzas(tabName) {
-  // 1) Validar permisos
-  if (tabName === 'Total') {
-    if (!currentUser.permisos.finanzasTotal) {
-      alert("No tienes permiso para 'Finanzas - Total Mensual'.");
-      return;
-    }
-  } else if (tabName === 'Egresos') {
-    if (!currentUser.permisos.finanzasEgresos) {
-      alert("No tienes permiso para 'Finanzas - Egresos'.");
-      return;
-    }
-  } else if (tabName === 'Ingresos') {
-    if (!currentUser.permisos.finanzasIngresos) {
-      alert("No tienes permiso para 'Finanzas - Ingresos'.");
-      return;
-    }
-  }
+function openTabFinanzas(tabName){
+  if(tabName==='Total'   && !currentUser.permisos.finanzasTotal   ){ alert("No tienes permiso."); return; }
+  if(tabName==='Egresos' && !currentUser.permisos.finanzasEgresos ){ alert("No tienes permiso."); return; }
+  if(tabName==='Ingresos'&& !currentUser.permisos.finanzasIngresos){ alert("No tienes permiso."); return; }
 
+  withLoader(()=>{     /* transición */
+    ['contentFinanzasTotal','contentFinanzasEgresos','contentFinanzasIngresos']
+      .forEach(id => document.getElementById(id).classList.remove('activeTabContent'));
+    ['tabFinanzasTotal','tabFinanzasEgresos','tabFinanzasIngresos']
+      .forEach(id => document.getElementById(id).classList.remove('activeTab'));
 
-  // 2) Quitar las clases de todas las pestañas de Finanzas
-  document.getElementById('contentFinanzasTotal').classList.remove('activeTabContent');
-  document.getElementById('contentFinanzasEgresos').classList.remove('activeTabContent');
-  document.getElementById('contentFinanzasIngresos').classList.remove('activeTabContent');
-  document.getElementById('tabFinanzasTotal').classList.remove('activeTab');
-  document.getElementById('tabFinanzasEgresos').classList.remove('activeTab');
-  document.getElementById('tabFinanzasIngresos').classList.remove('activeTab');
-
-  // 3) Activar la pestaña correcta
-  if (tabName === 'Total') {
-    document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
-    document.getElementById('tabFinanzasTotal').classList.add('activeTab');
-  } else if (tabName === 'Egresos') {
-    document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
-    document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
-  } else if (tabName === 'Ingresos') {
-    document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
-    document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
-  }
+    if(tabName==='Total'){
+      document.getElementById('contentFinanzasTotal').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasTotal').classList.add('activeTab');
+    }else if(tabName==='Egresos'){
+      document.getElementById('contentFinanzasEgresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasEgresos').classList.add('activeTab');
+    }else{
+      document.getElementById('contentFinanzasIngresos').classList.add('activeTabContent');
+      document.getElementById('tabFinanzasIngresos').classList.add('activeTab');
+    }
+  });
 }
+
 
 function initFinanzasRealTime(){
   const docRef = doc(db,"data","finanzas");
@@ -4381,20 +4428,19 @@ async function loadUsersFromFirebase(){
   }));
 }
 async function goToUsers(){
-  // Solo el usuario "renatozepi" (superadmin) puede entrar, 
-  // o podrías hacer un permiso p.adminUsers
   if(!currentUser || currentUser.username !== "renatozepi"){
-    alert("Solo el usuario administrador principal puede gestionar usuarios.");
-    return;
+    alert("Solo el administrador principal puede gestionar usuarios."); return;
   }
-  // Ocultamos login y landing
-  document.getElementById('landingPage').classList.add('hidden');
-  document.getElementById('usersContainer').style.display = 'block';
-  screenStack.push("users");
-  await loadUsersFromFirebase();
-  showUsersList();
-  openTabUsers('UsersMain');
+  await withLoader(async ()=>{
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('usersContainer').style.display = 'block';
+    screenStack.push("users");
+    await loadUsersFromFirebase();
+    showUsersList();
+    openTabUsers('UsersMain');
+  });
 }
+
 function descargarFichaWord(ch) {
   const year = new Date().getFullYear();
   const fileName = `Ficha Informativa_${year}_${ch.name}_${ch.lastname}.doc`;
@@ -4674,35 +4720,27 @@ async function guardarPermisosUsuario(){
   openTabUsers('UsersMain');
   showUsersList();
 }
-function openTabUsers(tabName) {
-  // 1) Dependiendo de la lógica, quizá solo el superadmin “renatozepi” puede acceder:
-  if (tabName === 'UsersMain') {
-    if (currentUser.username !== "renatozepi") {
-      alert("No tienes permiso para ver la lista de usuarios.");
-      return;
-    }
-  } else if (tabName === 'EditUser') {
-    if (currentUser.username !== "renatozepi") {
-      alert("No tienes permiso para editar usuarios.");
-      return;
-    }
+function openTabUsers(tabName){
+  if(currentUser.username!=="renatozepi"){
+    alert("No tienes permiso para gestionar usuarios."); return;
   }
 
-  // 2) Quitar clases
-  document.getElementById('contentUsersMain').classList.remove('activeTabContent');
-  document.getElementById('contentEditUser').classList.remove('activeTabContent');
-  document.getElementById('tabUsersMain').classList.remove('activeTab');
-  document.getElementById('tabEditUser').classList.remove('activeTab');
+  withLoader(()=>{  /* animación */
+    ['contentUsersMain','contentEditUser']
+      .forEach(id => document.getElementById(id).classList.remove('activeTabContent'));
+    ['tabUsersMain','tabEditUser']
+      .forEach(id => document.getElementById(id).classList.remove('activeTab'));
 
-  // 3) Activar la pestaña solicitada
-  if (tabName === 'UsersMain') {
-    document.getElementById('contentUsersMain').classList.add('activeTabContent');
-    document.getElementById('tabUsersMain').classList.add('activeTab');
-  } else if (tabName === 'EditUser') {
-    document.getElementById('contentEditUser').classList.add('activeTabContent');
-    document.getElementById('tabEditUser').classList.add('activeTab');
-  }
+    if(tabName==='UsersMain'){
+      document.getElementById('contentUsersMain').classList.add('activeTabContent');
+      document.getElementById('tabUsersMain').classList.add('activeTab');
+    }else{
+      document.getElementById('contentEditUser').classList.add('activeTabContent');
+      document.getElementById('tabEditUser').classList.add('activeTab');
+    }
+  });
 }
+
 function initEgresosFilters() {
   // 1. Llenar el select de Tipo:
   const selectTipo = document.getElementById("filtroEgresosTipo");
