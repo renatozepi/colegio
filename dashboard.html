@@ -4419,28 +4419,38 @@ function filtrarMatriculas () {
 }
 
 async function loadUsersFromFirebase(){
-  // Leemos todos los docs de la colección "users"
-  const ref = collection(db, "users");
-  const snap = await getDocs(ref);
-  users = snap.docs.map(doc => ({
-    username: doc.id,
-    ...doc.data()
-  }));
+  try{
+    const snap = await getDocs(collection(db,'users'));
+    users = snap.docs.map(d => ({ username:d.id, ...d.data() }));
+  }catch(err){
+    console.error('[Firestore] error leyendo usuarios:', err);
+    users = [];   // evita undefined
+  }
 }
 async function goToUsers(){
   if(!currentUser || currentUser.username !== "renatozepi"){
-    alert("Solo el administrador principal puede gestionar usuarios."); return;
+    alert("Solo el administrador principal puede gestionar usuarios.");
+    return;
   }
   await withLoader(async ()=>{
+    // Oculta todo lo anterior
+    document.querySelectorAll('.app-container')
+            .forEach(c => c.classList.remove('activeContainer'));
     document.getElementById('landingPage').classList.add('hidden');
-    document.getElementById('usersContainer').style.display = 'block';
-    screenStack.push("users");
+
+    // Muestra Users
+    const uc = document.getElementById('usersContainer');
+    uc.style.removeProperty('display');   // ⬅️  quita display:none inline
+    uc.classList.add('activeContainer');
+
+    screenStack.push('users');
+
+    // Carga y muestra
     await loadUsersFromFirebase();
     showUsersList();
     openTabUsers('UsersMain');
   });
 }
-
 function descargarFichaWord(ch) {
   const year = new Date().getFullYear();
   const fileName = `Ficha Informativa_${year}_${ch.name}_${ch.lastname}.doc`;
@@ -4598,37 +4608,26 @@ function descargarFichaWord(ch) {
 }
 
 function showUsersList(){
-  const container = document.getElementById('usersList');
-  container.innerHTML = '';
+  const cont = document.getElementById('usersList');
+  cont.innerHTML = '';
+
+  if(!users.length){
+    cont.innerHTML = '<p style="text-align:center; margin:12px 0;">(Sin usuarios registrados)</p>';
+    return;
+  }
+
   users.forEach(u => {
-      const div = document.createElement('div');
-    div.className = 'user-item';   // NUEVO: aplica la clase CSS
-    // ─── y elimina (o comenta) las 6 líneas style.* ───
-
-
-
-    const leftSpan = document.createElement('span');
-    leftSpan.textContent = `Usuario: ${u.username}`;
-    div.appendChild(leftSpan);
-
-    const rightDiv = document.createElement('div');
-    // Botón Editar Permisos
-    const btnEd = document.createElement('button');
-    btnEd.textContent = 'Editar Permisos';
-    btnEd.onclick = () => editUser(u.username);
-    rightDiv.appendChild(btnEd);
-
-    // Botón Eliminar (no se muestra para el usuario principal, por ejemplo "renatozepi")
-    if(u.username !== "renatozepi") {
-      const btnDel = document.createElement('button');
-      btnDel.textContent = 'Eliminar';
-      btnDel.style.marginLeft = '5px';
-      btnDel.onclick = () => deleteUser(u.username);
-      rightDiv.appendChild(btnDel);
-    }
-    div.appendChild(rightDiv);
-
-    container.appendChild(div);
+    const div = document.createElement('div');
+    div.className = 'user-item';
+    div.innerHTML = `
+      <span>${u.username}</span>
+      <div>
+        <button onclick="editUser('${u.username}')">Editar Permisos</button>
+        ${u.username !== 'renatozepi'
+          ? `<button style="margin-left:6px" onclick="deleteUser('${u.username}')">Eliminar</button>`
+          : '' }
+      </div>`;
+    cont.appendChild(div);
   });
 }
 async function deleteUser(username) {
@@ -4720,26 +4719,26 @@ async function guardarPermisosUsuario(){
   openTabUsers('UsersMain');
   showUsersList();
 }
+/* =========================================================
+   USERS – cambio crítico: SIN loader anidado
+   ========================================================= */
 function openTabUsers(tabName){
-  if(currentUser.username!=="renatozepi"){
-    alert("No tienes permiso para gestionar usuarios."); return;
+  /* 1. limpiar estados */
+  ['contentUsersMain','contentEditUser']
+    .forEach(id => document.getElementById(id).classList.remove('activeTabContent'));
+  ['tabUsersMain','tabEditUser']
+    .forEach(id => document.getElementById(id).classList.remove('activeTab'));
+
+  /* 2. activar el panel solicitado */
+  if(tabName === 'EditUser'){
+    document.getElementById('contentEditUser').classList.add('activeTabContent');
+    document.getElementById('tabEditUser').classList.add('activeTab');
+  }else{
+    document.getElementById('contentUsersMain').classList.add('activeTabContent');
+    document.getElementById('tabUsersMain').classList.add('activeTab');
   }
-
-  withLoader(()=>{  /* animación */
-    ['contentUsersMain','contentEditUser']
-      .forEach(id => document.getElementById(id).classList.remove('activeTabContent'));
-    ['tabUsersMain','tabEditUser']
-      .forEach(id => document.getElementById(id).classList.remove('activeTab'));
-
-    if(tabName==='UsersMain'){
-      document.getElementById('contentUsersMain').classList.add('activeTabContent');
-      document.getElementById('tabUsersMain').classList.add('activeTab');
-    }else{
-      document.getElementById('contentEditUser').classList.add('activeTabContent');
-      document.getElementById('tabEditUser').classList.add('activeTab');
-    }
-  });
 }
+
 
 function initEgresosFilters() {
   // 1. Llenar el select de Tipo:
@@ -4895,7 +4894,9 @@ document.addEventListener('keydown', e => {
     window.cambiarMesServices = cambiarMesServices
     window.cambiarMesMatriculas = cambiarMesMatriculas
     window.filterMatriculasBySearch = filterMatriculasBySearch;
-    window.openDayPicker = openDayPicker
+    window.openDayPicker = openDayPicker;
+    window.editUser   = editUser;
+    window.deleteUser = deleteUser;
   });
 </script>
 </body>
