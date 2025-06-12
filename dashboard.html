@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -211,7 +212,7 @@ justify-content:center;
   box-shadow:0 2px 6px rgba(0,0,0,.15);
   padding:6px;
   display:grid;
-  grid-template-columns:repeat(7,30px);  /* 7 col = semana */
+  grid-template-columns:repeat(7,30px);  /* 7 col = semana */
   gap:4px;
   z-index:9999;
 }
@@ -362,7 +363,7 @@ justify-content:center;
     #servicesContainer .children-table td {
       border: 1px solid #ddd; padding: 8px; text-align: left;
     }
- /* ========= Services › Administrar Niños ========= */
+ /* ========= Services › Administrar Niños ========= */
 
 /* --- Cabecera selector de mes (ya existe .finanzas-header) --- */
 #contentServicesChildren .finanzas-header{
@@ -600,7 +601,7 @@ button.day-btn,
   box-shadow:0 2px 6px rgba(0,0,0,.2);
 }
 
-/* ═════════════════════ MACROS – botón «Agregar Niño / Guardar Niño» ═══════════ */
+/* ═════════════════════ MACROS – botón «Agregar Niño / Guardar Niño» ═══════════ */
 #macrosContainer .form-section button{
   background:#4a90e2;
   color:#fff;
@@ -1111,7 +1112,7 @@ button.day-btn,
     <input type="text" id="childLastname" placeholder="Ej: PEREZ" />
   <label>DNI Padre:</label>                 <!-- NUEVO -->
   <input type="text" id="childDniPadre" placeholder="DNI" />
-<label>Día Ingreso:</label>
+<label>Día Ingreso:</label>
 <input type="text"
        id="childDay"
        placeholder="Día"
@@ -2448,7 +2449,7 @@ function generarTxt() {
       const mesNombre = meses[m];                         // texto (ENERO, …)
       const mesStr    = String(m + 1).padStart(2, "0");   // 01‑12
 
-      /* ------------- campo “concepto” (40 car.) ------------- */
+      /* ------------- campo “concepto” (40 car.) ------------- */
       const codigoConc = (
         prefijo +
         item.codigoRestante.padStart(2, "0") +   // asegura 2 dígitos
@@ -2457,14 +2458,14 @@ function generarTxt() {
         .substring(0, 40)   // si se pasa, corta
         .padEnd(40, " ");   // rellena a la derecha
 
-      /* ------------ importe en céntimos (18 N) -------------- */
+      /* ------------ importe en céntimos (18 N) -------------- */
       const importeCent = Math.round(item.importe * 100);
 
       importeMin   = Math.min(importeMin, importeCent);
       importeMax   = Math.max(importeMax, importeCent);
       importeTotal += importeCent;
 
-      /* ---------- armado del registro 02 (360 car.) --------- */
+      /* ---------- armado del registro 02 (360 car.) --------- */
       let linea02 =
         "02" +
         (item.apellidos + " " + item.nombre)           // alumno
@@ -2640,10 +2641,10 @@ function showServicesList(){
       right.appendChild(bEd);
     }
 
-    const bNi = document.createElement('button');
-    bNi.textContent = 'Administrar Niños';
-    bNi.onclick = () => openServiceChildren(s.title);
-    right.appendChild(bNi);
+const bNi = document.createElement('button');
+bNi.textContent = 'Administrar Niños';
+bNi.onclick = () => openServiceChildren(s.id);   // ← enviamos el ID, no el título
+right.appendChild(bNi);
 
     if(s.title !== 'Matrícula'){
       const bDel = document.createElement('button');
@@ -2686,18 +2687,20 @@ function crearService(){
   }
 
   /* ── crear ── */
-  const newService = {
-    id: nextServiceId++,
-    title,
-    variants: [],
-    children: []
-  };
+const newService = {
+  id: getNextServiceId(),   // ← siempre único
+  title,
+  variants: [],
+  children: []
+};
   services.push(newService);
 
   /* limpiar y refrescar */
   document.getElementById('tituloService').value = '';
   showServicesList();
   saveToFirebaseServices();
+  editingServiceId    = null;
+  editingServiceTitle = null;
 
   /* abrir Variantes usando el título */
   setTimeout(() => editService(title), 0);
@@ -2866,12 +2869,13 @@ function deleteVariant(variantName){
     saveToFirebaseServices();
   }
   /* Administrar Niños */
-function openServiceChildren(serviceTitle){
-  const serv = services.find(s => s.title === serviceTitle);
-  if(!serv) return;
+function openServiceChildren(serviceId){
+  const serv = services.find(s => s.id === serviceId);
+  if(!serv) return;                       // seguridad
 
-  editingServiceTitle = serviceTitle;
+  // referencia global al servicio activo
   editingServiceId    = serv.id;
+  editingServiceTitle = serv.title;
 
   openTabServices('ServicesChildren');
   document.getElementById('tabServicesChildren').style.display = 'block';
@@ -2879,25 +2883,31 @@ function openServiceChildren(serviceTitle){
 
   clearChildForm();
   renderChildrenTable(serv.children);
+
+  /* Etiqueta “Año / Variante” */
   const lab = document.getElementById('labelVariantChild');
   lab.textContent = (serv.title === 'Matrícula') ? 'Año' : 'Variante';
 
-  /* llena selector de variante */
+  /* Selector de variante */
   const sel = document.getElementById('childVariantSelect');
   sel.innerHTML = '';
-  if(serv.variants.length === 0){
-    const opt = document.createElement('option');
-    opt.text = 'Sin variantes';
-    sel.add(opt); sel.disabled = true;
-  }else if(serv.variants.length === 1){
+
+  if (serv.variants.length === 0){
+    sel.add(new Option('Sin variantes',''));
     sel.disabled = true;
-    const v = serv.variants[0];
-    sel.add(new Option(v.name, v.id));
-  }else{
+  } else if (serv.variants.length === 1){
+    sel.disabled = true;
+    sel.add(new Option(serv.variants[0].name, serv.variants[0].id));
+  } else {
     sel.disabled = false;
     serv.variants.forEach(v => sel.add(new Option(v.name, v.id)));
   }
 }
+// Devuelve el siguiente ID libre buscando el mayor id ya usado
+function getNextServiceId(){
+  return services.reduce((max, s) => Math.max(max, s.id || 0), 0) + 1;
+}
+
 
 function clearChildForm(){
   editingServiceChildId = null;
@@ -3960,10 +3970,10 @@ function initFinanzasRealTime(){
   const docRef = doc(db,"data","finanzas");
   onSnapshot(docRef,(docSnap)=>{
     if(docSnap.exists()){
-      updatingFromFirestore = true;             // ← ❶ encendemos el flag
+      updatingFromFirestore = true;             // ← ❶ encendemos el flag
       finanzasData = docSnap.data();
       renderFinanzas();                         // ← ❷
-      updatingFromFirestore = false;            // ← ❸ lo apagamos
+      updatingFromFirestore = false;            // ← ❸ lo apagamos
     }
   });
 }
