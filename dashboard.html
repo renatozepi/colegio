@@ -1548,40 +1548,35 @@ async function saveToFirebaseServices(){
    ------------------------------------------------------------------ */
 function sanitizeVariantIds(){
   let maxId = 0;
-  const used = new Map();     // id → servicio que lo usa
+  const usado = new Map();              // id → servicio que lo usa
 
-  // 1) recorre todos los servicios/variantes
-  services.forEach(serv=>{
-    serv.variants.forEach(v=>{
+  services.forEach(serv => {
+    serv.variants.forEach(v => {
       maxId = Math.max(maxId, v.id);
 
-      if(used.has(v.id)){             // ← id duplicado
-        const newId = ++maxId;        // genera uno nuevo
-        console.warn(`ID de variante duplicado (${v.id}). `
-                    +`Se reasigna como ${newId}`);
+      if (usado.has(v.id)) {            // ← id duplicado detectado
+        const nuevoId = ++maxId;
+        console.warn(`ID duplicado ${v.id} en «${serv.title}», `
+                    +`re-asignado a ${nuevoId}`);
 
-        /* actualiza variante */
-        const oldId = v.id;
-        v.id = newId;
+        const viejoId = v.id;
+        v.id = nuevoId;                 // actualiza variante
 
-        /* actualiza a todos los niños que apuntaban al id viejo */
+        /* actualiza todos los niños que apuntaban a ese id */
         services.forEach(s=>{
           s.children.forEach(c=>{
-            if(c.variantId === oldId){
-              c.variantId   = newId;
-              c.variantName = v.name;   // mantiene el nombre correcto
+            if(c.variantId === viejoId){
+              c.variantId   = nuevoId;
+              c.variantName = v.name;    // mantiene el nombre correcto
             }
           });
         });
       }
-      used.set(v.id, serv.title);
+      usado.set(v.id, serv.title);
     });
   });
-
-  nextVariantId = maxId + 1;          // evita colisiones futuras
+  nextVariantId = maxId + 1;            // asegura futuros ids únicos
 }
-
-
 
 function agregarOguardarChild(){
   if(!editingServiceId){ alert('No hay servicio seleccionado.'); return; }
@@ -2829,13 +2824,14 @@ function openTabMacros(tabName){
   let editingServiceId = null;
   let editingServiceChildId = null;
  let editingServiceTitle  = null;
-  async function initServices(){
-    await loadFromFirebaseServices();
-    ensureMatriculaService();
-    showServicesList();
-    setupDaysButtons();
+async function initServices(){
+  await loadFromFirebaseServices();     // datos desde Firestore
+  sanitizeVariantIds();                 // ← evita duplicados
+  ensureMatriculaService();
+  showServicesList();
+  setupDaysButtons();
   initSelectorMes('servicesMes');
-  }
+}
   function ensureMatriculaService(){
     if(serviceCheckDone) return;
     serviceCheckDone = true;
@@ -3023,61 +3019,50 @@ function editService(serviceTitle){
     document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
   }
 function agregarOguardarVariante(){
-  /* ── servicio activo ── */
   if(!editingServiceTitle){
-    alert('No hay servicio seleccionado.');
-    return;
+    alert('No hay servicio seleccionado.'); return;
   }
   const serv = services.find(s => s.title === editingServiceTitle);
   if(!serv){ alert('Servicio no encontrado'); return; }
 
-  /* ── datos del formulario ── */
   const name   = document.getElementById('variantName').value.trim();
   const price  = parseFloat(document.getElementById('variantPrice').value);
   const startT = document.getElementById('variantStart').value;
   const endT   = document.getElementById('variantEnd').value;
-  const days   = [...document.querySelectorAll('.day-btn.selected')]
-                   .map(b => b.textContent);
+  const days   = [...document.querySelectorAll('.day-btn.selected')].map(b=>b.textContent);
 
   if(!name || isNaN(price) || !startT || !endT){
-    alert('Completa todos los campos de la variante');
-    return;
+    alert('Completa todos los campos de la variante'); return;
   }
 
-  /* ── evitar duplicados dentro del MISMO servicio ── */
-  const existe = serv.variants.some(v =>
-    v.name === name && v.name !== editingVariantName   // permite sobrescribir la misma
-  );
-  if(existe){
-    alert(`Ya existe una variante llamada “${name}” dentro de «${serv.title}».`+
-          `\nUsa un nombre distinto o edita la variante existente.`);
-    return;
+  /*  evita duplicados de nombre dentro del servicio */
+  const existe = serv.variants.some(v => v.name === name && v.name !== editingVariantName);
+  if(existe){ alert(`Ya existe una variante “${name}” en este servicio`); return; }
+
+  /*  ——— id global único ——— */
+  while (
+    serv.variants.some(v => v.id === nextVariantId) ||
+    services.some(s => s !== serv && s.variants.some(v => v.id === nextVariantId))
+  ){
+    nextVariantId++;
   }
 
-  /* ── agregar o actualizar por nombre ── */
-  const idx = serv.variants.findIndex(v => v.name === editingVariantName);
-
-  if(idx === -1){                 // NUEVA
+  if(editingVariantName === null){        // ☆ NUEVA
     serv.variants.push({
-      id   : nextVariantId++,     // id se sigue generando p/compatibilidad
+      id   : nextVariantId++,
       name , price , days ,
       start: startT, end: endT
     });
-  }else{                          // EDITAR
-    Object.assign(serv.variants[idx], {
-      name , price , days ,
-      start: startT, end: endT
-    });
+  }else{                                  // ☆ MODIFICAR
+    const v = serv.variants.find(v => v.name === editingVariantName);
+    if(v) Object.assign(v,{ name, price, days, start:startT, end:endT });
   }
 
-  /* ── limpiar interfaz ── */
   editingVariantName = null;
-  document.getElementById('btnVariantPrincipal').textContent = 'Agregar Variante';
   clearVariantForm();
   renderVariantsTable(serv.variants);
   saveToFirebaseServices();
 }
-
 
 function renderVariantsTable(arr){
   const tbody = document.getElementById('tbodyVariants');
@@ -3346,165 +3331,157 @@ function closeProofModal(){
   document.getElementById('proofBackdrop').style.display = 'none';
 }
 
-
-
-/**
- * Renderiza la tabla de niños en Servicios, usando el dropdown custom.
- */
-/* ==============================================================
-   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
-   Incluye:
-   – dropdown de pago (Sí / No / Parcial)
-   – input de monto parcial (Enter = guardar)
-   – popup de comprobante al marcar “Sí”
-   – botones: Descargar comprobante, Borrar comprobante, Editar, Eliminar
-   ============================================================== */
-/* ==============================================================
-   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
-   Incluye:
-   – dropdown de pago (Sí / No / Parcial) con hover
-   – input de monto parcial (Enter = guardar)
-   – popup de comprobante al marcar “Sí” o completar parcial
-   – botones: Subir, Descargar, Borrar comprobante, Editar, Eliminar
-   – Eliminar niño se basa en nombre + apellido (lógica y límites intactos)
-   ============================================================== */
-/* ==============================================================
-   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
-   Ahora incluye:
-   – botones  ⬆ Subir, ⬇ Descargar, ✖ Eliminar comprobante
-   – edición inline, baja lógica, etc. (sin cambios)
-   ============================================================== */
-/**
- * RENDER CHILDREN TABLE  – Servicios › Administrar Niños
- * ------------------------------------------------------
- *  • Paleta & iconos originales
- *  • Subida/descarga/borrado de comprobantes con dataURL
- *  • Edición inline ampliada (nombre, apellidos, fecha, variante, atrasos)
- *  • Dropdown de pago Sí / No / Parcial
- */
-/* ============================================================== *
- * RENDER CHILDREN TABLE  –  Servicios › Administrar Niños
- * ============================================================== */
 function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
 
-  const servicio = services.find(s => s.id === editingServiceId);
-  if (!servicio) return;
+  const servicioActual = services.find(s => s.id === editingServiceId);
+  if (!servicioActual) return;
 
-  /* —— filtros —— */
-  const filas = childrenArr
+  const filtro = childrenSearchTerm.toLowerCase();
+  const filas  = childrenArr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
-    .filter(ch => !childrenSearchTerm ||
-      (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm));
+    .filter(ch =>
+      !filtro || (ch.name + ' ' + ch.lastname).toLowerCase().includes(filtro)
+    );
 
-  /* —— paleta de botones —— */
-  const colorBtn = {
-    upload : '#F1C40F',   // Subir comprobante
-    download: '#3BB273',  // Descargar comprobante
-    delProof: '#E74C3C',  // 🟠  Eliminar comprobante   (nuevo)
-    edit   : '#4a90e2',   // Editar niño
-    delKid : '#000000'    // 🔴  Dar de baja / eliminar niño  (nuevo)
+  /* utilidades */
+  const fmtDate = iso => iso ? iso.split('-').reverse().join('/') : '—';
+  const color   = { up:'#F1C40F', down:'#3BB273', delProof:'#E74C3C', edit:'#4a90e2', delKid:'#000' };
+  const mkBtn   = (txt,bg,title,fn)=>{
+    const b=document.createElement('button');
+    b.textContent=txt; b.title=title; b.className='action-btn'; b.style.background=bg; b.onclick=fn;
+    return b;
   };
 
-  /* —— formateador de fechas —— */
-  const fmtDate = iso => iso ? iso.split('-').reverse().join('/') : '—';
-
-  filas.forEach(ch => {
-    const row = tbody.insertRow();
-    row.dataset.id = ch.id;
-
-    /* 0 Nombre / 1 Apellidos */
+  filas.forEach(ch=>{
+    const row=tbody.insertRow();
     row.insertCell().textContent = ch.name;
     row.insertCell().textContent = ch.lastname;
-
-    /* 2 Fecha de Inscripción */
     row.insertCell().textContent = fmtDate(ch.date);
+    row.insertCell().textContent = ch.variantName || getVariantName(ch.variantId) || '';
 
-    /* 3 Variante */
-    row.insertCell().textContent =
-      ch.variantName || getVariantName(ch.variantId) || '';
-
-    /* 4 Dropdown pago */
+    /* ── Dropdown pago ── */
     const cellPago = row.insertCell();
-    const estadoPago = ch.partialPayments?.[mesKey] != null
-      ? 'partial'
-      : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
-
+    const estado   = ch.partialPayments?.[mesKey]!=null ? 'partial'
+                  : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
     cellPago.appendChild(
       createCustomDropdown(
-        estadoPago,
+        estado,
         [
-          { value: 'yes',     label: 'Sí'      },
-          { value: 'no',      label: 'No'      },
-          { value: 'partial', label: 'Parcial' }
+          { value:'yes',     label:'Sí'      },
+          { value:'no',      label:'No'      },
+          { value:'partial', label:'Parcial' }
         ],
-        nuevo => {
-          if (!ch.pagoPorMes)      ch.pagoPorMes      = {};
-          if (!ch.partialPayments) ch.partialPayments = {};
-          if (!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+        nuevo=>{
+          if(!ch.pagoPorMes)      ch.pagoPorMes      = {};
+          if(!ch.partialPayments) ch.partialPayments = {};
+          if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
 
-          if (nuevo === 'yes') {
-            ch.pagoPorMes[mesKey]      = true;
-            ch.fechaPagoPorMes[mesKey] = new Date().toISOString().split('T')[0];
+          if(nuevo==='yes'){
+            ch.pagoPorMes[mesKey]=true;
+            ch.fechaPagoPorMes[mesKey]=new Date().toISOString().split('T')[0];
             delete ch.partialPayments[mesKey];
-            openProofModal(ch, mesKey);
-          } else if (nuevo === 'no') {
-            ch.pagoPorMes[mesKey] = false;
+            openProofModal(ch,mesKey);
+          }else if(nuevo==='no'){
+            ch.pagoPorMes[mesKey]=false;
             delete ch.fechaPagoPorMes[mesKey];
             delete ch.partialPayments[mesKey];
-          } else {
-            ch.pagoPorMes[mesKey]      = false;
+          }else{
+            ch.pagoPorMes[mesKey]=false;
             delete ch.fechaPagoPorMes[mesKey];
-            ch.partialPayments[mesKey] = ch.partialPayments[mesKey] ?? 0;
+            ch.partialPayments[mesKey]=ch.partialPayments[mesKey]??0;
+            abrirInputParcial(ch,mesKey);
           }
           saveToFirebaseServices();
-          renderChildrenTable(childrenArr, mesKey);
+          renderChildrenTable(childrenArr,mesKey);
         }
       )
     );
 
-    /* 5 Fecha de pago */
-    row.insertCell().textContent = fmtDate(ch.fechaPagoPorMes?.[mesKey]);
-
-    /* 6 Pensiones atrasadas */
-    row.insertCell().textContent = ch.pensionesAtrasadas || 0;
-
-    /* 7 Acciones */
-    const acc = row.insertCell();
-    const g   = document.createElement('div');
-    g.className = 'action-group';
-    acc.appendChild(g);
-
-    const hasProof = !!ch.paymentProof?.[mesKey];
-
-    /* ⬆ SUBIR comprobante */
-    g.appendChild(mkBtn('⬆', colorBtn.upload, 'Subir comprobante',
-      () => openProofModal(ch, mesKey)));
-
-    /* ⬇ DESCARGAR y ✖ ELIMINAR solo si existe comprobante */
-    if (hasProof) {
-      g.appendChild(mkBtn('⬇', colorBtn.download, 'Descargar comprobante',
-        () => {
-          const a = document.createElement('a');
-          a.href      = ch.paymentProof[mesKey].data;
-          a.download  = ch.paymentProof[mesKey].name;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }));
-
-      g.appendChild(mkBtn('✖', colorBtn.delProof, 'Borrar comprobante',
-        () => borrarProof(ch, mesKey)));
+    /* ── Fecha de pago (la celda ES el selector) ── */
+    const cellFP=row.insertCell();
+    if(ch.pagoPorMes?.[mesKey]){
+      const inp=document.createElement('input');
+      inp.type='date';
+      inp.value=ch.fechaPagoPorMes?.[mesKey] || new Date().toISOString().split('T')[0];
+      Object.assign(inp.style,{
+        border:'none',background:'transparent',padding:'4px',cursor:'pointer',
+        font:'inherit',textAlign:'center'
+      });
+      inp.onchange = ()=> {
+        if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+        ch.fechaPagoPorMes[mesKey]=inp.value;
+        saveToFirebaseServices();
+      };
+      cellFP.appendChild(inp);
+    }else{
+      cellFP.textContent = fmtDate(ch.fechaPagoPorMes?.[mesKey]);
     }
 
-    /* ✎ EDITAR niño */
-    g.appendChild(mkBtn('✎', colorBtn.edit, 'Editar niño',
-      () => editServiceChild(ch.id)));
+    /* Pensiones atrasadas */
+    row.insertCell().textContent = ch.pensionesAtrasadas || 0;
 
-    /* 🗑️ DAR DE BAJA niño */
-    g.appendChild(mkBtn('🗑️', colorBtn.delKid, 'Dar de baja',
-      () => deleteServiceChild(ch.id)));
+    /* ── Acciones ── */
+    const acc=row.insertCell(); acc.className='action-group';
+    acc.appendChild(mkBtn('⬆',color.up,'Subir comprobante',()=>openProofModal(ch,mesKey)));
+    if(ch.paymentProof?.[mesKey]){
+      acc.appendChild(mkBtn('⬇',color.down,'Descargar comprobante',()=>downloadProof(ch,mesKey)));
+      acc.appendChild(mkBtn('✖',color.delProof,'Borrar comprobante',()=>borrarProof(ch,mesKey)));
+    }
+    acc.appendChild(mkBtn('✎',color.edit,'Editar niño',()=>comenzarEdicionFila(row,ch)));
+    acc.appendChild(mkBtn('🗑️',color.delKid,'Dar de baja',()=>deleteServiceChild(ch.id)));
   });
+}
 
+function openDatePicker(childObj, mesKey, fila, celdaFecha) {
+  /* crea / reutiliza un único <input type="date"> */
+  let picker = document.getElementById('payDatePicker');
+  if (!picker) {
+    picker           = document.createElement('input');
+    picker.type      = 'date';
+    picker.id        = 'payDatePicker';
+    picker.style.position = 'absolute';
+    picker.style.zIndex   = 9999;
+    picker.onblur = () => picker.remove();    // cierra al salir
+    picker.onchange = () => {
+      if (!picker.value){ picker.remove(); return; }
+
+      if (!childObj.fechaPagoPorMes) childObj.fechaPagoPorMes = {};
+      childObj.fechaPagoPorMes[mesKey] = picker.value;        // YYYY-MM-DD
+      saveToFirebaseServices();
+
+      celdaFecha.firstChild.textContent = picker.value.split('-').reverse().join('/');
+      picker.remove();
+    };
+    document.body.appendChild(picker);
+  }
+
+  /* Posiciona justo debajo de la fila */
+  const rect = fila.getBoundingClientRect();
+  picker.style.left = (rect.left + window.scrollX + 10) + 'px';
+  picker.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+  picker.value      = childObj.fechaPagoPorMes?.[mesKey] || '';
+  picker.focus();
+}
+function changePaymentDate(ch, mesKey){
+  const actual = ch.fechaPagoPorMes?.[mesKey] ? ch.fechaPagoPorMes[mesKey].split('-').reverse().join('/') : '';
+  const nuevo  = prompt("Nueva fecha de pago (DD/MM/AAAA):", actual);
+  if(nuevo===null) return;
+
+  const [d,m,y] = nuevo.split(/[\/\-]/);
+  if(!d||!m||!y){ alert("Formato inválido."); return; }
+
+  const iso = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+  ch.fechaPagoPorMes[mesKey] = iso;
+  if(!ch.pagoPorMes) ch.pagoPorMes = {};
+  ch.pagoPorMes[mesKey] = true;                // se considera pagado
+
+  saveToFirebaseServices();
+  const serv = services.find(s=>s.id===editingServiceId);
+  renderChildrenTable(serv.children, mesKey);
+}
   /* — Helper para crear botones compactos — */
   function mkBtn(txt, bg, title, handler) {
     const b = document.createElement('button');
@@ -3515,7 +3492,7 @@ function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
     b.onclick     = handler;
     return b;
   }
-}
+
 function showPopup(msg, type = 'ok') {
   const pop = document.createElement('div');
   pop.textContent = msg;
@@ -3602,59 +3579,38 @@ function comenzarEdicionFila(row, ch){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
 
-  /* ─── 0 y 1: Nombre / Apellidos ─── */
-  replaceCellWithInput(row.cells[0], ch.name,      'edit-name');
-  replaceCellWithInput(row.cells[1], ch.lastname,  'edit-last');
-
-  /* ─── 2: Fecha (YYYY-MM-DD) ─── */
-  const inpDate = document.createElement('input');
-  inpDate.type  = 'date';
-  inpDate.value = ch.date;
-  inpDate.className = 'edit-date';
-  row.cells[2].innerHTML = ''; row.cells[2].appendChild(inpDate);
-
-  /* ─── 3: Variante / Año ─── */
-  const selVar = document.createElement('select');
-  selVar.className = 'edit-var';
-  serv.variants.forEach(v=>{
-    const op = new Option(v.name, v.id);
-    selVar.add(op);
-    if(v.id === ch.variantId) op.selected = true;
-  });
-  // Si solo hay una variante la dejamos deshabilitada (no hay nada que escoger)
-  selVar.disabled = serv.variants.length <= 1;
-  row.cells[3].innerHTML = ''; row.cells[3].appendChild(selVar);
-
-  /* ─── 6: Pensiones atrasadas ─── */
-  const inpAtr = document.createElement('input');
-  inpAtr.type  = 'number';
-  inpAtr.min   = 0;
-  inpAtr.value = ch.pensionesAtrasadas || 0;
-  inpAtr.className = 'edit-atrasos';
-  inpAtr.style.width = '60px';
-  row.cells[6].innerHTML = ''; row.cells[6].appendChild(inpAtr);
-
-  /* ─── Botones acción: ✔ / ↶ ─── */
-  const acc = row.cells[7];
-  acc.innerHTML = '';
-
-  const bSave = document.createElement('button');
-  bSave.textContent = '✔';
-  bSave.className   = 'action-btn';
-  bSave.style.background = '#3BB273';
-  bSave.onclick = () => guardarEdicionFila(row, ch);
-  acc.appendChild(bSave);
-
-  const bCancel = document.createElement('button');
-  bCancel.textContent = '↶';
-  bCancel.className   = 'action-btn';
-  bCancel.style.background = '#999';
-  bCancel.onclick  = () => {
-    row.classList.remove('editing');
-    const mesSel = document.getElementById('servicesMes').value || getYearMonth();
-    renderChildrenTable(serv.children, mesSel);
+  /* — helpers — */
+  const repl = (cell,val,cls='')=>{
+    const inp=document.createElement('input');inp.type='text';inp.value=val;inp.className=cls;inp.style.width='100%';inp.style.padding='4px 6px';inp.style.border='1px solid #ccd3e6';inp.style.borderRadius='6px';cell.innerHTML='';cell.appendChild(inp);return inp;
   };
-  acc.appendChild(bCancel);
+
+  /* 0-1 Nombre/Apellidos */
+  const inpNom = repl(row.cells[0], ch.name     ,'edit-name' );
+  const inpApe = repl(row.cells[1], ch.lastname ,'edit-last' );
+
+  /* 2 Fecha Inscripción */
+  const inpFec = document.createElement('input');
+  inpFec.type='date';inpFec.value=ch.date;inpFec.className='edit-date';
+  row.cells[2].innerHTML='';row.cells[2].appendChild(inpFec);
+
+  /* 3 Variante */
+  const selVar=document.createElement('select');selVar.className='edit-var';
+  serv.variants.forEach(v=>selVar.add(new Option(v.name,v.id)));
+  selVar.value=ch.variantId; selVar.disabled=serv.variants.length<=1;
+  row.cells[3].innerHTML='';row.cells[3].appendChild(selVar);
+
+  /* 6 Atrasos */
+  const inpAtr=document.createElement('input');
+  inpAtr.type='number';inpAtr.min=0;inpAtr.value=ch.pensionesAtrasadas||0;
+  inpAtr.className='edit-atrasos';inpAtr.style.width='60px';
+  row.cells[6].innerHTML='';row.cells[6].appendChild(inpAtr);
+
+  /* Botones ✔ / ↶ */
+  const acc=row.cells[7]; acc.innerHTML='';
+  const mk = (txt,bg,fn)=>{const b=document.createElement('button');b.textContent=txt;b.className='action-btn';b.style.background=bg;b.onclick=fn;return b;};
+
+  acc.appendChild(mk('✔','#3BB273', ()=>guardarEdicionFila(row,ch)));
+  acc.appendChild(mk('↶','#999',    ()=>{row.classList.remove('editing');const mesSel=document.getElementById('servicesMes').value||getYearMonth();renderChildrenTable(serv.children,mesSel);} ));
 }
 function replaceCellWithInput(td, value, cls){
   const inp = document.createElement('input');
@@ -3710,10 +3666,9 @@ function guardarEdicionFila(row, ch){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
 
-  /* ─── recogemos los valores ─── */
-  const nombre   = row.querySelector('.edit-name')   .value.trim().toUpperCase();
-  const apellidos= row.querySelector('.edit-last')   .value.trim().toUpperCase();
-  const fecha    = row.querySelector('.edit-date')   .value;
+  const nombre   = row.querySelector('.edit-name').value.trim().toUpperCase();
+  const apellidos= row.querySelector('.edit-last').value.trim().toUpperCase();
+  const fecha    = row.querySelector('.edit-date').value;
   const varId    = parseInt(row.querySelector('.edit-var').value);
   const atrasos  = parseInt(row.querySelector('.edit-atrasos').value) || 0;
 
@@ -3722,17 +3677,11 @@ function guardarEdicionFila(row, ch){
     return;
   }
 
-  /* ─── aplicamos al objeto niño ─── */
-  ch.name               = nombre;
-  ch.lastname           = apellidos;
-  ch.date               = fecha;
-  ch.variantId          = varId;
-  ch.variantName        = getVariantName(varId) || ch.variantName;
+  ch.name = nombre; ch.lastname = apellidos; ch.date = fecha;
+  ch.variantId = varId; ch.variantName = getVariantName(varId) || ch.variantName;
   ch.pensionesAtrasadas = atrasos;
 
   saveToFirebaseServices();
-
-  /* refrescamos tabla y salimos del modo edición */
   const mesSel = document.getElementById('servicesMes').value || getYearMonth();
   renderChildrenTable(serv.children, mesSel);
 }
