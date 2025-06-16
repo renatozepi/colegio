@@ -3342,16 +3342,17 @@ function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
   const filas  = childrenArr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
     .filter(ch =>
-      !filtro || (ch.name + ' ' + ch.lastname).toLowerCase().includes(filtro)
+      !filtro ||
+      (ch.name + ' ' + ch.lastname).toLowerCase().includes(filtro)
     );
 
-  /* utilidades */
   const fmtDate = iso => iso ? iso.split('-').reverse().join('/') : '—';
-  const color   = { up:'#F1C40F', down:'#3BB273', delProof:'#E74C3C', edit:'#4a90e2', delKid:'#000' };
-  const mkBtn   = (txt,bg,title,fn)=>{
+  const color   = { up:'#F1C40F', down:'#3BB273', delProof:'#E74C3C',
+                    edit:'#4a90e2', delKid:'#000' };
+  const mkBtn = (txt,bg,title,fn)=>{
     const b=document.createElement('button');
-    b.textContent=txt; b.title=title; b.className='action-btn'; b.style.background=bg; b.onclick=fn;
-    return b;
+    b.textContent=txt; b.title=title; b.className='action-btn';
+    b.style.background=bg; b.onclick=fn; return b;
   };
 
   filas.forEach(ch=>{
@@ -3359,20 +3360,16 @@ function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
     row.insertCell().textContent = ch.name;
     row.insertCell().textContent = ch.lastname;
     row.insertCell().textContent = fmtDate(ch.date);
-    row.insertCell().textContent = ch.variantName || getVariantName(ch.variantId) || '';
+    row.insertCell().textContent = ch.variantName || getVariantName(ch.variantId)||'';
 
-    /* ── Dropdown pago ── */
+    /* ▼ dropdown pago */
     const cellPago = row.insertCell();
     const estado   = ch.partialPayments?.[mesKey]!=null ? 'partial'
-                  : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
+                   : ch.pagoPorMes?.[mesKey] ? 'yes':'no';
     cellPago.appendChild(
       createCustomDropdown(
         estado,
-        [
-          { value:'yes',     label:'Sí'      },
-          { value:'no',      label:'No'      },
-          { value:'partial', label:'Parcial' }
-        ],
+        [{value:'yes',label:'Sí'},{value:'no',label:'No'},{value:'partial',label:'Parcial'}],
         nuevo=>{
           if(!ch.pagoPorMes)      ch.pagoPorMes      = {};
           if(!ch.partialPayments) ch.partialPayments = {};
@@ -3399,38 +3396,47 @@ function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
       )
     );
 
-    /* ── Fecha de pago (la celda ES el selector) ── */
+    /* ▼ fecha de pago (input-date solo si pagado) */
     const cellFP=row.insertCell();
     if(ch.pagoPorMes?.[mesKey]){
       const inp=document.createElement('input');
       inp.type='date';
-      inp.value=ch.fechaPagoPorMes?.[mesKey] || new Date().toISOString().split('T')[0];
+      inp.value=ch.fechaPagoPorMes?.[mesKey]||
+                new Date().toISOString().split('T')[0];
       Object.assign(inp.style,{
-        border:'none',background:'transparent',padding:'4px',cursor:'pointer',
-        font:'inherit',textAlign:'center'
+        border:'none',background:'transparent',padding:'4px',
+        cursor:'pointer',font:'inherit',textAlign:'center'
       });
-      inp.onchange = ()=> {
-        if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+      inp.onchange=()=>{
+        if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes={};
         ch.fechaPagoPorMes[mesKey]=inp.value;
         saveToFirebaseServices();
       };
       cellFP.appendChild(inp);
-    }else{
-      cellFP.textContent = fmtDate(ch.fechaPagoPorMes?.[mesKey]);
-    }
+    }else cellFP.textContent = fmtDate(ch.fechaPagoPorMes?.[mesKey]);
 
-    /* Pensiones atrasadas */
-    row.insertCell().textContent = ch.pensionesAtrasadas || 0;
+    /* ▼ pensiones atrasadas */
+    row.insertCell().textContent = ch.pensionesAtrasadas||0;
 
-    /* ── Acciones ── */
+    /* ▼ acciones */
     const acc=row.insertCell(); acc.className='action-group';
-    acc.appendChild(mkBtn('⬆',color.up,'Subir comprobante',()=>openProofModal(ch,mesKey)));
+
+    acc.appendChild( mkBtn('⬆',color.up,'Subir comprobante',
+      ()=>openProofModal(ch,mesKey)) );
+
     if(ch.paymentProof?.[mesKey]){
-      acc.appendChild(mkBtn('⬇',color.down,'Descargar comprobante',()=>downloadProof(ch,mesKey)));
-      acc.appendChild(mkBtn('✖',color.delProof,'Borrar comprobante',()=>borrarProof(ch,mesKey)));
+      acc.appendChild( mkBtn('⬇',color.down,'Descargar comprobante',
+        ()=>downloadProof(ch,mesKey)) );
+      acc.appendChild( mkBtn('✖',color.delProof,'Borrar comprobante',
+        ()=>borrarProof(ch,mesKey)) );
     }
-    acc.appendChild(mkBtn('✎',color.edit,'Editar niño',()=>comenzarEdicionFila(row,ch)));
-    acc.appendChild(mkBtn('🗑️',color.delKid,'Dar de baja',()=>deleteServiceChild(ch.id)));
+
+    /* usar nombre+apellido en lugar de id */
+    acc.appendChild( mkBtn('✎',color.edit,'Editar niño',
+      ()=>comenzarEdicionFila(row,ch)));        // ya pasa el objeto
+
+    acc.appendChild( mkBtn('🗑️',color.delKid,'Dar de baja',
+      ()=>deleteServiceChildByName(ch.name,ch.lastname)) );
   });
 }
 
@@ -3688,21 +3694,28 @@ function guardarEdicionFila(row, ch){
 function deleteServiceChildByName(name, lastname){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
-  const idx = serv.children.findIndex(c => c.name === name && c.lastname === lastname);
-  if(idx === -1) return;
-  const ch  = serv.children[idx];
 
+  const idx = serv.children.findIndex(c =>
+    c.name === name && c.lastname === lastname
+  );
+  if(idx === -1) return;
+
+  const ch  = serv.children[idx];
   const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+
   if(!confirm(`¿Dar de baja a ${name} ${lastname}?`)) return;
 
+  /* baja lógica o eliminación física según el mes */
   if(ch.mesRegistro === mesSel){
-    serv.children.splice(idx,1);
+    serv.children.splice(idx,1);          // fuera completamente
   }else{
-    ch.mesBaja = mesSel;
+    ch.mesBaja = mesSel;                  // baja lógica
   }
+
   saveToFirebaseServices();
   renderChildrenTable(serv.children, mesSel);
 }
+
 
 function editServiceChild(childId){
   const serv = services.find(s=>s.id===editingServiceId);
