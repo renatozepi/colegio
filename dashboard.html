@@ -583,6 +583,18 @@ button.day-btn,
 .pension-btn {
   margin:6px;                 /* 6 px en los 4 lados */
 }
+#contentServicesChildren .finanzas-header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(249,251,255,.95);
+  backdrop-filter: blur(6px);
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+#contentServicesChildren .finanzas-header.scrolled{
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  transform: translateY(-4px);
+}
 
 /* ═════════════════════ MATRÍCULAS – botón «Aplicar Filtro» ═══════════════════ */
 #matriculasContainer .matriculas-header button,
@@ -1431,6 +1443,15 @@ button.day-btn,
 <!-- Coloca esto al inicio del bloque de <script> en tu dashboard -->
 <script type="module" defer>
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  /* ⬇️  TUS CREDENCIALES PROPIAS (las que acabas de pasarme) */
+  const SUPABASE_URL = 'https://grootjniffhweeuegwsn.supabase.co';
+  const SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyb290am5pZmZod2VldWVnd3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwOTUzMDAsImV4cCI6MjA2NTY3MTMwMH0.hrTwlWaO4aPOLXMSrEyPHgUh9O8ql_qh2NA53birE6I';
+
+  /* ➡️  Cliente global accesible en todos tus scripts */
+  window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   import {
     getFirestore,
     doc,
@@ -1495,8 +1516,47 @@ async function saveToFirebaseServices(){
     services, nextServiceId, nextVariantId, nextServiceChildId
   },{merge:true});
 }
+/* ------------------------------------------------------------------
+   Garantiza IDs únicos para todas las variantes y actualiza a
+   los niños que las usan.  (se ejecuta una sola vez en cada carga)
+   ------------------------------------------------------------------ */
+function sanitizeVariantIds(){
+  let maxId = 0;
+  const used = new Map();     // id → servicio que lo usa
 
-/* ---------- AGREGAR / EDITAR NIÑO ---------- */
+  // 1) recorre todos los servicios/variantes
+  services.forEach(serv=>{
+    serv.variants.forEach(v=>{
+      maxId = Math.max(maxId, v.id);
+
+      if(used.has(v.id)){             // ← id duplicado
+        const newId = ++maxId;        // genera uno nuevo
+        console.warn(`ID de variante duplicado (${v.id}). `
+                    +`Se reasigna como ${newId}`);
+
+        /* actualiza variante */
+        const oldId = v.id;
+        v.id = newId;
+
+        /* actualiza a todos los niños que apuntaban al id viejo */
+        services.forEach(s=>{
+          s.children.forEach(c=>{
+            if(c.variantId === oldId){
+              c.variantId   = newId;
+              c.variantName = v.name;   // mantiene el nombre correcto
+            }
+          });
+        });
+      }
+      used.set(v.id, serv.title);
+    });
+  });
+
+  nextVariantId = maxId + 1;          // evita colisiones futuras
+}
+
+
+
 function agregarOguardarChild(){
   if(!editingServiceId){ alert('No hay servicio seleccionado.'); return; }
   const serv = services.find(s=>s.id===editingServiceId);
@@ -1509,40 +1569,50 @@ function agregarOguardarChild(){
   const mesSel   = document.getElementById('servicesMes').value;           // YYYY-MM
   const sel      = document.getElementById('childVariantSelect');
 
-  let variantId = null;
-  if(!sel.disabled)      variantId = parseInt(sel.value);
-  else if(serv.variants.length===1) variantId = serv.variants[0].id;
+  /* — id y nombre de la variante (o año) — */
+  let variantId   = null;
+  let variantName = '';
+  if(!sel.disabled){
+    variantId   = parseInt(sel.value);
+    variantName = sel.options[sel.selectedIndex].textContent;
+  }else if(serv.variants.length === 1){
+    variantId   = serv.variants[0].id;
+    variantName = serv.variants[0].name;
+  }
 
   if(!name || !lastname || !day){
     alert('Completa todos los campos'); return;
   }
-
   const precio = (serv.variants.find(v=>v.id===variantId)?.price) || 0;
 
-  if(editingServiceChildId===null){
+  if(editingServiceChildId===null){                /* NUEVO ---------------- */
     serv.children.push({
       id : nextServiceChildId++,
       name, lastname,
-      dniPadre,                                            // ← NUEVO
-      date : `${mesSel}-${String(parseInt(day)).padStart(2,'0')}`,
+      dniPadre,
+      date        : `${mesSel}-${String(parseInt(day)).padStart(2,'0')}`,
       variantId,
+      variantName,                                // 💡 se guarda el nombre
       mesRegistro : mesSel,
       mesBaja     : null,
       total       : precio,
       ficha       : {},
       fichaCompleta:false,
       pagoPorMes  : { [mesSel]: false },
-      fechaPagoPorMes : {},                                // ← NUEVO
+      fechaPagoPorMes : {},
+      partialPayments  : {},
+      deudaPorMes      : {},
       pensionesAtrasadas: 0,
-      lastPagoCheck : getYearMonth()
+      lastPagoCheck    : getYearMonth()
     });
-  }else{
+  }else{                                           /* EDICIÓN -------------- */
     const ch = serv.children.find(c=>c.id===editingServiceChildId);
     if(ch){
       Object.assign(ch,{
         name, lastname, dniPadre,
         date:`${mesSel}-${String(parseInt(day)).padStart(2,'0')}`,
-        variantId, total:precio
+        variantId, variantName,
+        total:precio
       });
     }
     editingServiceChildId = null;
@@ -1554,37 +1624,24 @@ function agregarOguardarChild(){
   saveToFirebaseServices();
 }
 
-
 /* ---------- DAR DE BAJA UN NIÑO ---------- */
 function deleteServiceChild(childId){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
-
   const idx = serv.children.findIndex(c => c.id === childId);
   if(idx === -1) return;
   const ch  = serv.children[idx];
 
-  /* 1) Mensaje de confirmación */
-  const nombreCompleto = `${ch.name} ${ch.lastname}`.trim();
-  if(!confirm(`¿Seguro que deseas eliminar a ${nombreCompleto}?`)) return;
-
-  /* 2) Respeta el límite de 3 eliminaciones por minuto */
-  if(!_canDelete(1)){
-    alert("Límite de eliminaciones alcanzado (máx. 3 niños por minuto).");
-    return;
-  }
-
-  /* 3) Mes que el usuario está viendo en el selector */
   const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+  const full   = `${ch.name} ${ch.lastname}`.trim();
+  if(!confirm(`¿Dar de baja a ${full}?`)) return;
 
-  /* 4) Si el niño se quita el mismo mes en que se registró,
-        se elimina físicamente; de lo contrario, baja lógica   */
+  /* ▶️ si mes de registro === mes a dar de baja → borrado físico */
   if(ch.mesRegistro === mesSel){
-    serv.children.splice(idx,1);            // eliminación definitiva
+    serv.children.splice(idx,1);               // eliminación real
   }else{
-    ch.mesBaja = mesSel;                    // baja lógica (quedará en histórico)
+    ch.mesBaja = mesSel;                       // baja lógica
   }
-
   saveToFirebaseServices();
   renderChildrenTable(serv.children, mesSel);
 }
@@ -2217,6 +2274,29 @@ function applyPermissionsToMenus() {
       console.error("Error loading macros from Firebase:", error);
     }
   }
+async function uploadProofToSupabase(file, mesKey, childId) {
+  /* carpeta lógica dentro del bucket:  YYYY-MM/childId/ */
+  const dir      = `${mesKey}/${childId}`;
+  const fileExt  = file.name.split('.').pop();      // jpg / png / pdf…
+  const fileName = `${Date.now()}.${fileExt}`;
+  const filePath = `${dir}/${fileName}`;
+
+  /* 1️⃣  Subir (upsert = true → machaca si existe una versión previa) */
+  const { error: upErr } = await supabase
+    .storage
+    .from('comprobantes')
+    .upload(filePath, file, { upsert: true });
+
+  if (upErr) throw upErr;
+
+  /* 2️⃣  Obtener URL pública directa */
+  const { data: { publicUrl } } = supabase
+    .storage
+    .from('comprobantes')
+    .getPublicUrl(filePath);
+
+  return { publicUrl, fileName, filePath };
+}
   async function saveToFirebaseMacros(){
     try {
       const docRef = doc(db, "data", "macrosAlumnos");
@@ -2514,6 +2594,139 @@ function generarTxt() {
 }
 
 
+/* ===========================================================
+   ✂ UTILIDADES DE COMPRESIÓN  ≤ 900 kB (Firestore 1 MiB) ✂
+   =========================================================== */
+/* 1 MiB exactos (1 048 576 bytes en el data-URL) */
+const MAX_B64_LEN = 1_048_576;
+      // 900 kB en la string base64
+const MIN_QUALITY = 0.40;         // no bajamos de 40 %
+const MIN_WIDTH   = 600;          // ni de 600 px de ancho
+
+/* ▸ Comprime una sola pasada */
+function compressImageOnce(file, width, quality){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const ratio = Math.min(1, width / img.width);
+      const w = img.width  * ratio;
+      const h = img.height * ratio;
+
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      cvs.getContext('2d').drawImage(img,0,0,w,h);
+
+      cvs.toBlob(blob=>{
+        const fr = new FileReader();
+        fr.onload  = () => resolve(fr.result); // dataURL
+        fr.onerror = reject;
+        fr.readAsDataURL(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/* ▸ Convierte cualquier File a dataURL sin compresión */
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onload  = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ▸ Algoritmo “inteligente” – devuelve siempre un dataURL ≤ 900 kB */
+async function smartCompress(file, maxLen = MAX_B64_LEN) {
+  /* 1. Imágenes */
+  if (file.type.startsWith('image/')) {
+    let q = 0.7,
+      w = 1400;
+    while (true) {
+      const d = await compressImageOnce(file, w, q);
+      if (d.length <= maxLen || (w <= MIN_WIDTH && q <= MIN_QUALITY)) return d;
+      w = Math.round(w * 0.8);
+      q = Math.max(q - 0.05, MIN_QUALITY);
+    }
+  }
+
+  /* 2. PDF / DOC / otros */
+  const buf = await file.arrayBuffer();
+  if (buf.byteLength <= maxLen * 0.67) {
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return `data:${file.type};base64,${b64}`;
+  }
+
+  /* 3. Demasiado grande */
+  throw new Error('Archivo demasiado grande y no se pudo comprimir.');
+}
+
+/* ===========================================================
+   NUEVA LÓGICA DE SUBIDA  – pop-up en el intento de “subir”
+   =========================================================== */
+
+/* ---- variable global temporal para guardar el archivo ya comprimido ---- */
+let proofReady = null;   // { data, name }  o  null
+
+/* ---- 1.  Al elegir archivo (change) ------------------------------------ */
+document.getElementById('proofFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) {            // usuario canceló el diálogo
+    proofReady = null;
+    return;
+  }
+
+  try {
+    const dataUrl = await smartCompress(file);   // tu compresor original
+
+    /* ↓  Si incluso después de comprimir sigue > 1 MiB → error inmediato  */
+    if (dataUrl.length > MAX_B64_LEN) {
+      proofReady = null;
+      showPopup('⚠️  El archivo comprimido supera 1 MB. Usa uno más ligero.', 'error');
+      return;
+    }
+
+    /* Todo bien */
+    proofReady = { data: dataUrl, name: file.name };
+    /* pop-up de éxito con 0,5 s de retardo */
+    showPopup('✅ Archivo listo para subir.', 'ok', 500);
+
+  } catch (err) {
+    console.error(err);
+    proofReady = null;
+    showPopup('❌ Error al procesar el archivo.', 'error');
+  }
+});
+
+/* ---- 2.  Al pulsar “Guardar” ------------------------------------------- */
+document.getElementById('btnProofSave').onclick = () => {
+  if (!proofReady) {                          // aún no hay archivo válido
+    showPopup('Selecciona un archivo válido primero.', 'error');
+    return;
+  }
+
+  try {
+    if (!proofChild.paymentProof) proofChild.paymentProof = {};
+    proofChild.paymentProof[proofMesKey] = proofReady;   // usamos el data-URL listo
+    saveToFirebaseServices();
+
+    const serv = services.find(s => s.id === editingServiceId);
+    renderChildrenTable(serv.children, proofMesKey);
+    closeProofModal();                                  // cierra sin pop-ups extra
+
+  } catch (err) {
+    console.error(err);
+    showPopup('❌ ' + (err.message || 'Error al guardar.'), 'error');
+  } finally {
+    proofReady = null;        // SIEMPRE reseteamos
+  }
+};
+
+
+/* ========== BOTÓN CANCELAR ========== */
+document.getElementById('btnProofCancel').onclick = closeProofModal;
 
 function openTabMacros(tabName){
   if(tabName==='Macros' && !currentUser.permisos.macros){
@@ -2869,45 +3082,79 @@ function deleteVariant(variantName){
     saveToFirebaseServices();
   }
   /* Administrar Niños */
+/* ===============================================================
+   ABRE la pestaña “Administrar Niños” de un servicio
+   =============================================================== */
 function openServiceChildren(serviceId){
+  /* — Servicio y variables globales — */
   const serv = services.find(s => s.id === serviceId);
-  if(!serv) return;                       // seguridad
+  if(!serv) { alert('Servicio no encontrado'); return; }
 
-  // referencia global al servicio activo
   editingServiceId    = serv.id;
   editingServiceTitle = serv.title;
 
+  /* — UI: cambia de pestaña — */
   openTabServices('ServicesChildren');
   document.getElementById('tabServicesChildren').style.display = 'block';
   document.getElementById('currentServiceTitleChild').textContent = serv.title;
 
-  clearChildForm();
-  renderChildrenTable(serv.children);
-
-  /* Etiqueta “Año / Variante” */
-  const lab = document.getElementById('labelVariantChild');
-  lab.textContent = (serv.title === 'Matrícula') ? 'Año' : 'Variante';
-
-  /* Selector de variante */
-  const sel = document.getElementById('childVariantSelect');
-  sel.innerHTML = '';
-
-  if (serv.variants.length === 0){
-    sel.add(new Option('Sin variantes',''));
-    sel.disabled = true;
-  } else if (serv.variants.length === 1){
-    sel.disabled = true;
-    sel.add(new Option(serv.variants[0].name, serv.variants[0].id));
-  } else {
-    sel.disabled = false;
-    serv.variants.forEach(v => sel.add(new Option(v.name, v.id)));
+  /* — Selector de mes (si aún no existe) — */
+  if(!document.getElementById('servicesMes').options.length){
+    initSelectorMes('servicesMes');          // crea los 12 últimos meses
   }
-}
-// Devuelve el siguiente ID libre buscando el mayor id ya usado
-function getNextServiceId(){
-  return services.reduce((max, s) => Math.max(max, s.id || 0), 0) + 1;
+
+  /* — Etiqueta y selector de variante / año — */
+  const labVar = document.getElementById('labelVariantChild');
+  const selVar = document.getElementById('childVariantSelect');
+  labVar.textContent = (serv.title === 'Matrícula') ? 'Año' : 'Variante';
+  selVar.innerHTML = '';
+
+  if(serv.variants.length === 0){
+    selVar.add(new Option('Sin variantes',''));
+    selVar.disabled = true;
+  }else if(serv.variants.length === 1){
+    selVar.disabled = true;
+    selVar.add(new Option(serv.variants[0].name, serv.variants[0].id));
+  }else{
+    selVar.disabled = false;
+    serv.variants.forEach(v => selVar.add(new Option(v.name, v.id)));
+  }
+
+  /* — Limpia formulario, pinta tabla — */
+  clearChildForm();
+  const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+  renderChildrenTable(serv.children, mesSel);
+
+  /* — Sticky header con leve animación — */
+  const hdr  = document.querySelector('#contentServicesChildren .finanzas-header');
+  const scFn = () => hdr.classList.toggle('scrolled', window.scrollY > 15);
+  window.removeEventListener('scroll', scFn);   // evita duplicados
+  window.addEventListener('scroll', scFn);
+  scFn();                                       // estado inicial
 }
 
+function compressImage(file, maxW = 800, quality = 0.6){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const scale = Math.min(1, maxW / img.width);
+      const w = img.width  * scale;
+      const h = img.height * scale;
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>{
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);      // dataURL
+        reader.onerror= e=>reject(e);
+        reader.readAsDataURL(blob);
+      },'image/jpeg',quality);
+    };
+    img.onerror = e=>reject(e);
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 function clearChildForm(){
   editingServiceChildId = null;
@@ -3034,24 +3281,42 @@ function closeProofModal(){
 }
 
 /* ==== Guardar foto ==== */
-document.getElementById('btnProofSave').onclick = () =>{
-  const fileInp = document.getElementById('proofFile');
-  if(!fileInp.files.length){ closeProofModal(); return; }
+document.getElementById('btnProofSave').onclick = async () => {
+  const inp = document.getElementById('proofFile');
+  if (!inp.files.length) { closeProofModal(); return; }
 
-  const reader = new FileReader();
-  reader.onload = e =>{
-    if(!proofChild.paymentProof) proofChild.paymentProof = {};
+  try {
+    const file = inp.files[0];
+    const comp = await smartCompress(file);      // tu función de compresión
+    /* smartCompress devuelve un Blob?  → conviértelo */
+    const finalFile = comp instanceof Blob ? comp : file;
+
+    /* ⬇️  Subida al bucket */
+    const { publicUrl, fileName, filePath } =
+      await uploadProofToSupabase(finalFile, proofMesKey, proofChild.id);
+
+    /* Guarda SOLO metadatos ligeros en Firestore */
+    if (!proofChild.paymentProof) proofChild.paymentProof = {};
     proofChild.paymentProof[proofMesKey] = {
-      data : e.target.result,               // dataURL
-      name : fileInp.files[0].name || 'comprobante.jpg'
+      name: fileName,
+      url : publicUrl,
+      path: filePath
     };
-    saveToFirebaseServices();
-    const serv = services.find(s=>s.id===editingServiceId);
+
+    await saveToFirebaseServices();
+
+    const serv = services.find(s => s.id === editingServiceId);
     renderChildrenTable(serv.children, proofMesKey);
     closeProofModal();
-  };
-  reader.readAsDataURL(fileInp.files[0]);
+    showPopup('✅ Comprobante subido correctamente.', 'ok', 500);
+
+  } catch (err) {
+    console.error(err);
+    showPopup('❌ ' + (err.message || 'Error al subir comprobante'), 'error');
+  }
 };
+
+
 document.getElementById('btnProofCancel').onclick = closeProofModal;
 
 /**
@@ -3074,221 +3339,389 @@ document.getElementById('btnProofCancel').onclick = closeProofModal;
    – botones: Subir, Descargar, Borrar comprobante, Editar, Eliminar
    – Eliminar niño se basa en nombre + apellido (lógica y límites intactos)
    ============================================================== */
-function renderChildrenTable(arr, mesKey = getYearMonth()){
+/* ==============================================================
+   RENDER CHILDREN TABLE  (Servicios › Administrar Niños)
+   Ahora incluye:
+   – botones  ⬆ Subir, ⬇ Descargar, ✖ Eliminar comprobante
+   – edición inline, baja lógica, etc. (sin cambios)
+   ============================================================== */
+/**
+ * RENDER CHILDREN TABLE  – Servicios › Administrar Niños
+ * ------------------------------------------------------
+ *  • Paleta & iconos originales
+ *  • Subida/descarga/borrado de comprobantes con dataURL
+ *  • Edición inline ampliada (nombre, apellidos, fecha, variante, atrasos)
+ *  • Dropdown de pago Sí / No / Parcial
+ */
+/* ============================================================== *
+ * RENDER CHILDREN TABLE  –  Servicios › Administrar Niños
+ * ============================================================== */
+function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
   const tbody = document.getElementById('tbodyChildren');
   tbody.innerHTML = '';
 
-  const serv = services.find(s => s.id === editingServiceId);
-  if(!serv) return;
+  const servicio = services.find(s => s.id === editingServiceId);
+  if (!servicio) return;
 
-  const fmt = iso => iso ? iso.split('-').reverse().join('/') : '';
-
-  arr
+  /* —— filtros —— */
+  const filas = childrenArr
     .filter(ch => childIsActiveInMonth(ch, mesKey))
     .filter(ch => !childrenSearchTerm ||
-         (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm))
-    .forEach(ch => {
-      const row = tbody.insertRow();
-      row.insertCell(0).textContent = ch.name;
-      row.insertCell(1).textContent = ch.lastname;
-      row.insertCell(2).textContent = fmt(ch.date);
-      row.insertCell(3).textContent = getVariantName(ch.variantId) || '';
+      (ch.name + ' ' + ch.lastname).toLowerCase().includes(childrenSearchTerm));
 
-      /* ========== Pago pensión ========== */
-      const valPago = ch.partialPayments?.[mesKey] != null
-                        ? 'partial'
-                        : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
+  /* —— paleta de botones —— */
+  const colorBtn = {
+    upload : '#F1C40F',   // Subir comprobante
+    download: '#3BB273',  // Descargar comprobante
+    delProof: '#E74C3C',  // 🟠  Eliminar comprobante   (nuevo)
+    edit   : '#4a90e2',   // Editar niño
+    delKid : '#000000'    // 🔴  Dar de baja / eliminar niño  (nuevo)
+  };
 
-      const cellPago = row.insertCell(4);
-      cellPago.style.verticalAlign = 'top';
-      const wrapPago = document.createElement('div');
-      wrapPago.style.display = 'flex';
-      wrapPago.style.flexDirection = 'column';
-      cellPago.appendChild(wrapPago);
+  /* —— formateador de fechas —— */
+  const fmtDate = iso => iso ? iso.split('-').reverse().join('/') : '—';
 
-      const dd = createCustomDropdown(
-        valPago,
+  filas.forEach(ch => {
+    const row = tbody.insertRow();
+    row.dataset.id = ch.id;
+
+    /* 0 Nombre / 1 Apellidos */
+    row.insertCell().textContent = ch.name;
+    row.insertCell().textContent = ch.lastname;
+
+    /* 2 Fecha de Inscripción */
+    row.insertCell().textContent = fmtDate(ch.date);
+
+    /* 3 Variante */
+    row.insertCell().textContent =
+      ch.variantName || getVariantName(ch.variantId) || '';
+
+    /* 4 Dropdown pago */
+    const cellPago = row.insertCell();
+    const estadoPago = ch.partialPayments?.[mesKey] != null
+      ? 'partial'
+      : ch.pagoPorMes?.[mesKey] ? 'yes' : 'no';
+
+    cellPago.appendChild(
+      createCustomDropdown(
+        estadoPago,
         [
-          {value:'no',      label:'No'},
-          {value:'yes',     label:'Sí'},
-          {value:'partial', label:'Parcial'}
+          { value: 'yes',     label: 'Sí'      },
+          { value: 'no',      label: 'No'      },
+          { value: 'partial', label: 'Parcial' }
         ],
-        estado => {
-          if(!ch.pagoPorMes)      ch.pagoPorMes      = {};
-          if(!ch.partialPayments) ch.partialPayments = {};
-          if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+        nuevo => {
+          if (!ch.pagoPorMes)      ch.pagoPorMes      = {};
+          if (!ch.partialPayments) ch.partialPayments = {};
+          if (!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
 
-          if(estado === 'yes'){
+          if (nuevo === 'yes') {
             ch.pagoPorMes[mesKey]      = true;
             ch.fechaPagoPorMes[mesKey] = new Date().toISOString().split('T')[0];
             delete ch.partialPayments[mesKey];
-            openProofModal(ch, mesKey);                 // popup al marcar Sí
-          }else if(estado === 'no'){
+            openProofModal(ch, mesKey);
+          } else if (nuevo === 'no') {
             ch.pagoPorMes[mesKey] = false;
             delete ch.fechaPagoPorMes[mesKey];
             delete ch.partialPayments[mesKey];
-          }else{
+          } else {
             ch.pagoPorMes[mesKey]      = false;
             delete ch.fechaPagoPorMes[mesKey];
             ch.partialPayments[mesKey] = ch.partialPayments[mesKey] ?? 0;
           }
           saveToFirebaseServices();
-          renderChildrenTable(arr, mesKey);
-        });
-      wrapPago.appendChild(dd);
+          renderChildrenTable(childrenArr, mesKey);
+        }
+      )
+    );
 
-      /* ===== input parcial ===== */
-      if(valPago === 'partial'){
-        const inp = document.createElement('input');
-        inp.type  = 'number';
-        inp.min   = '0';
-        inp.step  = '0.01';
-        inp.placeholder = 'Monto';
-        inp.value = ch.partialPayments?.[mesKey] ?? '';
-        Object.assign(inp.style,{
-          marginTop:'6px', padding:'6px 8px',
-          border:'1px solid #ccd3e6', borderRadius:'6px', width:'110px'
-        });
-        inp.addEventListener('input', () =>{
-          ch.partialPayments[mesKey] = parseFloat(inp.value) || 0;
-        });
-        inp.addEventListener('keydown', e=>{
-          if(e.key === 'Enter') inp.blur();          // guardar con Enter
-        });
-        inp.addEventListener('blur', () =>{
-          const total = ch.total || 0;
-          if(ch.partialPayments[mesKey] >= total){
-            delete ch.partialPayments[mesKey];
-            ch.pagoPorMes[mesKey]      = true;
-            ch.fechaPagoPorMes[mesKey] = new Date().toISOString().split('T')[0];
-            openProofModal(ch, mesKey);               // popup al completar
-          }
-          saveToFirebaseServices();
-          renderChildrenTable(arr, mesKey);
-        });
-        wrapPago.appendChild(inp);
-      }
+    /* 5 Fecha de pago */
+    row.insertCell().textContent = fmtDate(ch.fechaPagoPorMes?.[mesKey]);
 
-      /* ===== Fecha pago ===== */
-      const cellFecha = row.insertCell(5);
-      const inpF = document.createElement('input');
-      inpF.type  = 'date';
-      inpF.value = ch.fechaPagoPorMes?.[mesKey] || '';
-      inpF.onchange = () =>{
-        if(!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
-        ch.fechaPagoPorMes[mesKey] = inpF.value || undefined;
-        if(inpF.value) ch.pagoPorMes[mesKey] = true;
-        saveToFirebaseServices();
-        if(inpF.value) openProofModal(ch, mesKey);
-      };
-      cellFecha.appendChild(inpF);
+    /* 6 Pensiones atrasadas */
+    row.insertCell().textContent = ch.pensionesAtrasadas || 0;
 
-      /* ===== Atrasos ===== */
-      const cellAtr = row.insertCell(6);
-      const inpA = document.createElement('input');
-      inpA.type  = 'number';
-      inpA.value = ch.pensionesAtrasadas || 0;
-      inpA.style.width = '70px';
-      inpA.onchange = () =>{
-        ch.pensionesAtrasadas = +inpA.value || 0;
-        saveToFirebaseServices();
-      };
-      cellAtr.appendChild(inpA);
+    /* 7 Acciones */
+    const acc = row.insertCell();
+    const g   = document.createElement('div');
+    g.className = 'action-group';
+    acc.appendChild(g);
 
-      /* ========== Acciones ========== */
-      const cellAcc = row.insertCell(7);
-      const contBtn = document.createElement('div');
-      contBtn.className = 'action-group';
-      cellAcc.appendChild(contBtn);
+    const hasProof = !!ch.paymentProof?.[mesKey];
 
-      const hasProof = ch.paymentProof?.[mesKey];
+    /* ⬆ SUBIR comprobante */
+    g.appendChild(mkBtn('⬆', colorBtn.upload, 'Subir comprobante',
+      () => openProofModal(ch, mesKey)));
 
-      /* Subir */
-      const bUp = document.createElement('button');
-      bUp.textContent = '⬆';
-      bUp.title = 'Subir comprobante';
-      bUp.className = 'action-btn';
-      bUp.style.background = '#4a90e2';
-      bUp.onclick = () => openProofModal(ch, mesKey);
-      contBtn.appendChild(bUp);
+    /* ⬇ DESCARGAR y ✖ ELIMINAR solo si existe comprobante */
+    if (hasProof) {
+      g.appendChild(mkBtn('⬇', colorBtn.download, 'Descargar comprobante',
+        () => {
+          const a = document.createElement('a');
+          a.href      = ch.paymentProof[mesKey].data;
+          a.download  = ch.paymentProof[mesKey].name;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }));
 
-      /* Descargar */
-      const bDown = document.createElement('button');
-      bDown.textContent = '⬇';
-      bDown.title = 'Descargar comprobante';
-      bDown.className = 'action-btn';
-      bDown.style.background = hasProof ? '#3BB273' : '#888';
-      bDown.onclick = () =>{
-        if(!hasProof){ alert('No hay comprobante'); return; }
-        const a = document.createElement('a');
-        a.href = hasProof.data;
-        a.download = hasProof.name;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      };
-      contBtn.appendChild(bDown);
+      g.appendChild(mkBtn('✖', colorBtn.delProof, 'Borrar comprobante',
+        () => borrarProof(ch, mesKey)));
+    }
 
-      /* Borrar comprobante */
-      const bErase = document.createElement('button');
-      bErase.textContent = '✖';
-      bErase.title = 'Borrar comprobante';
-      bErase.className = 'action-btn';
-      bErase.style.background = hasProof ? '#E74C3C' : '#888';
-      bErase.onclick = () => borrarProof(ch, mesKey);
-      contBtn.appendChild(bErase);
+    /* ✎ EDITAR niño */
+    g.appendChild(mkBtn('✎', colorBtn.edit, 'Editar niño',
+      () => editServiceChild(ch.id)));
 
-      /* Editar niño */
-      const bEdit = document.createElement('button');
-      bEdit.textContent = '✎';
-      bEdit.title = 'Editar niño';
-      bEdit.className = 'action-btn';
-      bEdit.style.background = '#4a90e2';
-      bEdit.onclick = () => editServiceChild(ch.id);
-      contBtn.appendChild(bEdit);
+    /* 🗑️ DAR DE BAJA niño */
+    g.appendChild(mkBtn('🗑️', colorBtn.delKid, 'Dar de baja',
+      () => deleteServiceChild(ch.id)));
+  });
 
-      /* Eliminar niño por nombre + apellido */
-      const bDel = document.createElement('button');
-      bDel.textContent = '🗑️';
-      bDel.title = 'Eliminar niño';
-      bDel.className = 'action-btn';
-      bDel.style.background = '#E74C3C';
-      bDel.onclick = () => deleteServiceChildByName(ch.name, ch.lastname);
-      contBtn.appendChild(bDel);
-    });
+  /* — Helper para crear botones compactos — */
+  function mkBtn(txt, bg, title, handler) {
+    const b = document.createElement('button');
+    b.textContent = txt;
+    b.title       = title;
+    b.className   = 'action-btn';
+    b.style.background = bg;
+    b.onclick     = handler;
+    return b;
+  }
+}
+function showPopup(msg, type = 'ok') {
+  const pop = document.createElement('div');
+  pop.textContent = msg;
+  Object.assign(pop.style, {
+    position: 'fixed',
+    left: '50%',
+    top: '20px',
+    transform: 'translateX(-50%)',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    color: '#fff',
+    background: type === 'error' ? '#E74C3C' : '#3BB273',
+    boxShadow: '0 2px 8px rgba(0,0,0,.25)',
+    zIndex: 5000,
+    opacity: '0',
+    transition: 'opacity .25s ease'
+  });
+  document.body.appendChild(pop);
+  requestAnimationFrame(() => (pop.style.opacity = '1'));
+  setTimeout(() => {
+    pop.style.opacity = '0';
+    pop.addEventListener('transitionend', () => pop.remove());
+  }, 2600);
+}
+function startInlineEdit(row, ch, servicioActual, mesKey) {
+  if (row.classList.contains('editing')) return;
+  row.classList.add('editing');
+
+  const [cNom, cApe, cFecha, cVar, , , cPens, cAcc] = row.cells;
+
+  /* Nombre y Apellidos */
+  const inpNom = createInlineInput(ch.name);
+  const inpApe = createInlineInput(ch.lastname);
+  cNom.innerHTML = ''; cNom.appendChild(inpNom);
+  cApe.innerHTML = ''; cApe.appendChild(inpApe);
+
+  /* Fecha inscripción */
+  const inpFecha = document.createElement('input');
+  inpFecha.type  = 'date';
+  inpFecha.value = ch.date;
+  inpFecha.style.width = '140px';
+  cFecha.innerHTML = ''; cFecha.appendChild(inpFecha);
+
+  /* Variante (selector) */
+  const selVar = document.createElement('select');
+  servicioActual.variants.forEach(v =>
+    selVar.add(new Option(v.name, v.id))
+  );
+  selVar.value = ch.variantId;
+  cVar.innerHTML = ''; cVar.appendChild(selVar);
+
+  /* Pensiones atrasadas */
+  const inpPens = document.createElement('input');
+  inpPens.type  = 'number';
+  inpPens.style.width = '60px';
+  inpPens.value = ch.pensionesAtrasadas || 0;
+  cPens.innerHTML = ''; cPens.appendChild(inpPens);
+
+  /* Botones ✔ / ↶ */
+  cAcc.innerHTML = '';
+  cAcc.appendChild(
+    mkBtn('✔', '#3BB273', () => {
+      ch.name               = inpNom.value.trim().toUpperCase();
+      ch.lastname           = inpApe.value.trim().toUpperCase();
+      ch.date               = inpFecha.value;
+      ch.variantId          = parseInt(selVar.value, 10);
+      ch.variantName        = selVar.options[selVar.selectedIndex].textContent;
+      ch.pensionesAtrasadas = parseInt(inpPens.value) || 0;
+      saveToFirebaseServices();
+      renderChildrenTable(servicioActual.children, mesKey);
+    })
+  );
+  cAcc.appendChild(
+    mkBtn('↶', '#999', () =>
+      renderChildrenTable(servicioActual.children, mesKey)
+    )
+  );
+}
+function comenzarEdicionFila(row, ch){
+  if(row.classList.contains('editing')) return;
+  row.classList.add('editing');
+
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+
+  /* ─── 0 y 1: Nombre / Apellidos ─── */
+  replaceCellWithInput(row.cells[0], ch.name,      'edit-name');
+  replaceCellWithInput(row.cells[1], ch.lastname,  'edit-last');
+
+  /* ─── 2: Fecha (YYYY-MM-DD) ─── */
+  const inpDate = document.createElement('input');
+  inpDate.type  = 'date';
+  inpDate.value = ch.date;
+  inpDate.className = 'edit-date';
+  row.cells[2].innerHTML = ''; row.cells[2].appendChild(inpDate);
+
+  /* ─── 3: Variante / Año ─── */
+  const selVar = document.createElement('select');
+  selVar.className = 'edit-var';
+  serv.variants.forEach(v=>{
+    const op = new Option(v.name, v.id);
+    selVar.add(op);
+    if(v.id === ch.variantId) op.selected = true;
+  });
+  // Si solo hay una variante la dejamos deshabilitada (no hay nada que escoger)
+  selVar.disabled = serv.variants.length <= 1;
+  row.cells[3].innerHTML = ''; row.cells[3].appendChild(selVar);
+
+  /* ─── 6: Pensiones atrasadas ─── */
+  const inpAtr = document.createElement('input');
+  inpAtr.type  = 'number';
+  inpAtr.min   = 0;
+  inpAtr.value = ch.pensionesAtrasadas || 0;
+  inpAtr.className = 'edit-atrasos';
+  inpAtr.style.width = '60px';
+  row.cells[6].innerHTML = ''; row.cells[6].appendChild(inpAtr);
+
+  /* ─── Botones acción: ✔ / ↶ ─── */
+  const acc = row.cells[7];
+  acc.innerHTML = '';
+
+  const bSave = document.createElement('button');
+  bSave.textContent = '✔';
+  bSave.className   = 'action-btn';
+  bSave.style.background = '#3BB273';
+  bSave.onclick = () => guardarEdicionFila(row, ch);
+  acc.appendChild(bSave);
+
+  const bCancel = document.createElement('button');
+  bCancel.textContent = '↶';
+  bCancel.className   = 'action-btn';
+  bCancel.style.background = '#999';
+  bCancel.onclick  = () => {
+    row.classList.remove('editing');
+    const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+    renderChildrenTable(serv.children, mesSel);
+  };
+  acc.appendChild(bCancel);
+}
+function replaceCellWithInput(td, value, cls){
+  const inp = document.createElement('input');
+  inp.type  = 'text';
+  inp.value = value;
+  inp.className = cls;
+  inp.style.width = '100%';
+  inp.style.padding = '4px 6px';
+  inp.style.border  = '1px solid #ccd3e6';
+  inp.style.borderRadius = '6px';
+  td.innerHTML = ''; td.appendChild(inp);
+}
+function downloadProof(childObj, mesKey) {
+  const info = childObj.paymentProof?.[mesKey];
+  if (!info) return alert('Sin comprobante');
+
+  const a = document.createElement('a');
+  a.href = info.url;
+  a.download = info.name;
+  a.click();
+}
+
+function createInlineInput(val) {
+  const inp = document.createElement('input');
+  inp.type  = 'text';
+  inp.value = val;
+  inp.style.width        = '100%';
+  inp.style.padding      = '4px 6px';
+  inp.style.border       = '1px solid #ccd3e6';
+  inp.style.borderRadius = '6px';
+  return inp;
+}
+function abrirInputParcial(ch, mesKey) {
+  const monto = prompt("Monto abonado (S/):", ch.partialPayments?.[mesKey] || '');
+  if (monto === null) return;             // cancelado
+  const n = parseFloat(monto);
+  if (isNaN(n) || n < 0) { alert("Valor no válido"); return; }
+
+  if (!ch.partialPayments) ch.partialPayments = {};
+  ch.partialPayments[mesKey] = n;
+
+  /* fecha de pago parcial */
+  if (!ch.fechaPagoPorMes) ch.fechaPagoPorMes = {};
+  ch.fechaPagoPorMes[mesKey] = getYearMonth() + '-' + new Date().getDate().toString().padStart(2,'0');
+
+  openProofModal(ch, mesKey);             // opcional: subir voucher
+  saveToFirebaseServices();
+
+  const serv = services.find(s=>s.id===editingServiceId);
+  renderChildrenTable(serv.children, mesKey);
+}
+function guardarEdicionFila(row, ch){
+  const serv = services.find(s => s.id === editingServiceId);
+  if(!serv) return;
+
+  /* ─── recogemos los valores ─── */
+  const nombre   = row.querySelector('.edit-name')   .value.trim().toUpperCase();
+  const apellidos= row.querySelector('.edit-last')   .value.trim().toUpperCase();
+  const fecha    = row.querySelector('.edit-date')   .value;
+  const varId    = parseInt(row.querySelector('.edit-var').value);
+  const atrasos  = parseInt(row.querySelector('.edit-atrasos').value) || 0;
+
+  if(!nombre || !apellidos || !fecha){
+    alert("Nombre, apellidos y fecha son obligatorios");
+    return;
+  }
+
+  /* ─── aplicamos al objeto niño ─── */
+  ch.name               = nombre;
+  ch.lastname           = apellidos;
+  ch.date               = fecha;
+  ch.variantId          = varId;
+  ch.variantName        = getVariantName(varId) || ch.variantName;
+  ch.pensionesAtrasadas = atrasos;
+
+  saveToFirebaseServices();
+
+  /* refrescamos tabla y salimos del modo edición */
+  const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+  renderChildrenTable(serv.children, mesSel);
 }
 function deleteServiceChildByName(name, lastname){
   const serv = services.find(s => s.id === editingServiceId);
   if(!serv) return;
-
-  /* buscamos la coincidencia */
-  const idx = serv.children.findIndex(c =>
-    c.name === name && c.lastname === lastname
-  );
-  if(idx === -1){
-    alert("No se encontró ese niño en el servicio.");
-    return;
-  }
+  const idx = serv.children.findIndex(c => c.name === name && c.lastname === lastname);
+  if(idx === -1) return;
   const ch  = serv.children[idx];
 
-  /* 1) confirmación */
-  const full = `${ch.name} ${ch.lastname}`.trim();
-  if(!confirm(`¿Seguro que deseas eliminar a ${full}?`)) return;
-
-  /* 2) límite anti-borrado masivo */
-  if(!_canDelete(1)){
-    alert("Límite de eliminaciones alcanzado (máx. 3 niños por minuto).");
-    return;
-  }
-
-  /* 3) mes que el usuario está viendo */
   const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+  if(!confirm(`¿Dar de baja a ${name} ${lastname}?`)) return;
 
-  /* 4) eliminación física o baja lógica */
   if(ch.mesRegistro === mesSel){
-    serv.children.splice(idx,1);   // remove definitivo
+    serv.children.splice(idx,1);
   }else{
-    ch.mesBaja = mesSel;           // baja lógica
+    ch.mesBaja = mesSel;
   }
-
   saveToFirebaseServices();
   renderChildrenTable(serv.children, mesSel);
 }
@@ -3322,14 +3755,14 @@ function editServiceChild(childId){
     showServicesList();
     saveToFirebaseServices();
   }
-  function getVariantName(varId){
-    if(!varId) return null;
-    for(const s of services){
-      const fv = s.variants.find(v => v.id === varId);
-      if(fv) return fv.name;
-    }
-    return null;
+function getVariantName(varId, fallback = null){
+  if(!varId) return fallback;
+  for(const s of services){
+    const v = s.variants.find(v => v.id === varId);
+    if(v) return v.name;
   }
+  return fallback;                // si no existe, usamos el respaldo
+}
   function getYearMonth(){
     const d = new Date();
     return d.getFullYear().toString() + '-' + String(d.getMonth()+1).padStart(2, '0');
@@ -3571,16 +4004,46 @@ function eliminarEgresoComp(nombre, cantidad, anio, mes){
 
 
 
-function borrarProof(ch, mesKey){
-  if(!ch.paymentProof?.[mesKey]){
-    alert("No hay comprobante para este mes");
-    return;
+async function borrarProof(childObj, mesKey) {
+  const info = childObj.paymentProof?.[mesKey];
+  if (!info) return alert('No existe comprobante');
+
+  if (!confirm('¿Eliminar comprobante definitivamente?')) return;
+
+  /* 1) eliminar del bucket */
+  const { error } = await supabase
+    .storage
+    .from('comprobantes')
+    .remove([info.path]);
+  if (error) {
+    console.error(error);
+    return alert('Error al borrar en Supabase');
   }
-  if(!confirm("¿Eliminar comprobante?")) return;
-  delete ch.paymentProof[mesKey];
+
+  /* 2) quitar referencia en Firestore y refrescar UI */
+  delete childObj.paymentProof[mesKey];
   saveToFirebaseServices();
-  const serv = services.find(s=>s.id===editingServiceId);
+
+  const serv = services.find(s => s.id === editingServiceId);
   renderChildrenTable(serv.children, mesKey);
+}
+
+async function migrateOldProofs() {
+  for (const s of services) {
+    for (const c of s.children) {
+      for (const [mes, info] of Object.entries(c.paymentProof || {})) {
+        if (!info.data?.startsWith('data:')) continue;  // ya migrado
+
+        const blob = await (await fetch(info.data)).blob();
+        const { publicUrl, fileName, filePath } =
+          await uploadProofToSupabase(blob, mes, c.id);
+
+        c.paymentProof[mes] = { name: fileName, url: publicUrl, path: filePath };
+      }
+    }
+  }
+  await saveToFirebaseServices();
+  console.log('✅ Migración terminada');
 }
 /* ------------ EDITAR ------------   */
 /* Carga en el formulario el egreso seleccionado                    */
@@ -4231,6 +4694,7 @@ cont.appendChild(btnDescargarWord);
    **************************************************************/
   async function initMatriculas(){
     await loadFromFirebaseServices();
+    sanitizeVariantIds();
     ensureMatriculaService();
     monthlyPaymentCheckAllServices();
   initSelectorMes('filtroMesMatriculas');
@@ -4281,10 +4745,13 @@ function filterMatriculasBySearch(){
 }
 
 
-function filterChildren() {
-  childrenSearchTerm = document.getElementById("childrenSearch").value.trim().toLowerCase();
-  const serv = services.find(s => s.id === editingServiceId);
-  if (serv) renderChildrenTable(serv.children);
+function filterChildren(){
+  childrenSearchTerm = document.getElementById("childrenSearch").value
+                          .trim()
+                          .toLowerCase();
+  const serv   = services.find(s => s.id === editingServiceId);
+  const mesSel = document.getElementById('servicesMes').value || getYearMonth();
+  if(serv) renderChildrenTable(serv.children, mesSel);
 }
 
   function eliminarSubtipo() {
