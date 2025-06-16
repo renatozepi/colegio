@@ -102,6 +102,30 @@ justify-content:center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: background-color 0.2s ease;
 }
+/* ░░░ Loader ligero – solo para “Guardar comprobante” ░░░ */
+#proofLoader{
+  position:fixed; inset:0;
+  display:none; align-items:center; justify-content:center;
+  /* apenas cubre la vista (35 %), con un suave blur */
+  background:rgba(255,255,255,.35);
+  backdrop-filter:blur(2px);
+  z-index:2000;
+  opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+#proofLoader.active{            /* la misma mecánica de #appLoader */
+  display:flex;
+  opacity:1;
+  pointer-events:all;
+}
+/* spinner un poco más discreto */
+.proof-spinner{
+  width:48px; height:48px;
+  border:6px solid #4a90e2;
+  border-top-color:transparent;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
 
 #logoutContainer button:hover {
   box-shadow: 0 4px 7px rgba(0, 0, 0, 0.2);
@@ -1054,7 +1078,9 @@ button.day-btn,
     </div>
   </div>
 </div>
-
+<div id="proofLoader">
+  <div class="proof-spinner"></div>
+</div>
 <!-- =================== CONTENEDOR SERVICES =================== -->
 <div class="app-container" id="servicesContainer">
   <button class="bottom-left-btn" onclick="goBack()">Regresar</button>
@@ -1648,54 +1674,98 @@ function deleteServiceChild(childId){
 /* =====================================================
    0.  Loader helpers  –  fade-in  ➜  callback  ➜  fade-out
    ===================================================== */
+/* ========== loader liviano para comprobantes ========== */
+/* ░░░ Loader liviano para los comprobantes ░░░ */
+function ensureProofLoader(){
+  let l = document.getElementById('proofLoader');
+  if(!l){
+    l = document.createElement('div');
+    l.id = 'proofLoader';
+    l.innerHTML = '<div class="proof-spinner"></div>';
+    document.body.appendChild(l);
+  }
+  return l;
+}
+
+/* ── aparece ── */
+function fadeInProofLoader(){
+  return new Promise(res=>{
+    const L   = ensureProofLoader();
+    const fin = ()=>{ L.ontransitionend=null; clearTimeout(tid); res(); };
+    const tid = setTimeout(fin, 400);          // fallback de 0,4 s
+
+    L.classList.add('active');
+    requestAnimationFrame(()=>{
+      L.style.opacity = '1';                   // dispara la transición
+      L.ontransitionend = e=> e.propertyName==='opacity' && fin();
+    });
+  });
+}
+
+/* ── desaparece ── */
+function fadeOutProofLoader(){
+  return new Promise(res=>{
+    const L   = ensureProofLoader();
+    const fin = ()=>{ L.ontransitionend=null; clearTimeout(tid);
+                      L.classList.remove('active'); res(); };
+    const tid = setTimeout(fin, 400);          // fallback
+
+    L.style.opacity = '0';
+    L.ontransitionend = e=> e.propertyName==='opacity' && fin();
+  });
+}
+
+/* wrapper idéntico a withLoader() pero solo para comprobantes */
+async function withProofLoader(cb){
+  await fadeInProofLoader();
+  try{ await cb(); }
+  finally{ await fadeOutProofLoader(); }
+}
+
+
 function ensureLoader(){
   let l = document.getElementById('appLoader');
-  if(!l){                                   // nunca debería ocurrir,
-    console.warn('Se creó #appLoader en caliente');
-    const div = document.createElement('div');
-    div.id = 'appLoader';
-    div.innerHTML = '<div class="loader-ring"></div>';
-    document.body.appendChild(div);
-    l = div;
+  if(!l){
+    l = document.createElement('div');
+    l.id = 'appLoader';
+    l.innerHTML = '<div class="loader-ring"></div>';
+    document.body.appendChild(l);
   }
   return l;
 }
 function fadeInLoader(){
   return new Promise(res=>{
-const l = ensureLoader();
-l.classList.add('active');          // ahora pasa de display:none a flex
- l.style.opacity = '0';              // empezamos en 0 opacidad
-requestAnimationFrame(()=>{         // siguiente frame → comenzamos fade-in
-  l.style.opacity = '1';            // 0  →  1   (animado)
-      const h = e=>{
-        if(e.propertyName!=='opacity') return;
-        l.removeEventListener('transitionend',h);
-        res();                          // overlay ya 100 % opaco
+    const l = ensureLoader();
+    l.classList.add('active');
+    l.style.opacity = '0';
+    requestAnimationFrame(()=>{
+      l.style.opacity = '1';
+      l.ontransitionend = e=>{
+        if(e.propertyName==='opacity'){ l.ontransitionend=null; res(); }
       };
-      l.addEventListener('transitionend',h);
     });
   });
 }
 function fadeOutLoader(){
   return new Promise(res=>{
     const l = ensureLoader();
-    l.style.opacity = '0';              // ➜   1 → 0
-    const h = e=>{
-      if(e.propertyName!=='opacity') return;
-      l.removeEventListener('transitionend',h);
-      l.classList.remove('active');     // oculta overlay
-      res();
+    l.style.opacity = '0';
+    l.ontransitionend = e=>{
+      if(e.propertyName==='opacity'){
+        l.ontransitionend=null;
+        l.classList.remove('active');
+        res();
+      }
     };
-    l.addEventListener('transitionend',h);
   });
 }
-/* wrapper ⇒ garantiza fade-in, ejecuta callback (sync o async)
-   y luego fade-out                                            */
+/* 👉 wrapper: llama tu lógica entre fade-in y fade-out */
 async function withLoader(cb){
-  await fadeInLoader();       // ① sube overlay
-  try{ await cb(); }          // ② ejecuta tu lógica
-  finally{ await fadeOutLoader(); }   // ③ baja overlay
+  await fadeInLoader();
+  try{ await cb(); }
+  finally{ await fadeOutLoader(); }
 }
+
 
 /* Para compatibilidad con llamadas existentes --------------- */
 function showLoader(){ document.getElementById('appLoader').classList.add('active'); document.getElementById('appLoader').style.opacity='1'; }
@@ -1872,6 +1942,37 @@ const totalDebt = partialDebt + overdueDebt + currentDebt;
   const fecha=`${d.getDate().toString().padStart(2,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getFullYear()}`;
   XLSX.writeFile(wb,`${type} - ${serv.title} - ${fecha}.xlsx`);
 }
+document.getElementById('btnProofSave')
+  .onclick = () => withProofLoader(async () => {
+
+    const inp = document.getElementById('proofFile');
+    if (!inp.files.length){ closeProofModal(); return; }
+
+    /* 1 · comprimir */
+    const file     = inp.files[0];
+    const compBlob = await smartCompress(file);
+
+    /* 2 · subir a Supabase */
+    const { publicUrl, fileName, filePath } =
+      await uploadProofToSupabase(compBlob, proofMesKey, proofChild.id);
+
+    /* 3 · guardar metadatos en Firestore */
+    if (!proofChild.paymentProof) proofChild.paymentProof = {};
+    proofChild.paymentProof[proofMesKey] = {
+      name:fileName, url:publicUrl, path:filePath
+    };
+    await saveToFirebaseServices();
+
+    /* 4 · refrescar UI */
+    const serv = services.find(s => s.id === editingServiceId);
+    renderChildrenTable(serv.children, proofMesKey);
+    closeProofModal();
+    showPopup('✅ Comprobante subido correctamente.','ok',500);
+  });
+
+/* ============================================================
+ * 5️⃣  (opcional) asegúrate de tener closeProofModal:
+ * ============================================================ */
 
 
 
@@ -2274,23 +2375,19 @@ function applyPermissionsToMenus() {
       console.error("Error loading macros from Firebase:", error);
     }
   }
-async function uploadProofToSupabase(file, mesKey, childId) {
-  /* carpeta lógica dentro del bucket:  YYYY-MM/childId/ */
+async function uploadProofToSupabase(fileOrBlob, mesKey, childId){
   const dir      = `${mesKey}/${childId}`;
-  const fileExt  = file.name.split('.').pop();      // jpg / png / pdf…
-  const fileName = `${Date.now()}.${fileExt}`;
+  const ext      = (fileOrBlob.name||'blob').split('.').pop();
+  const fileName = `${Date.now()}.${ext}`;
   const filePath = `${dir}/${fileName}`;
 
-  /* 1️⃣  Subir (upsert = true → machaca si existe una versión previa) */
   const { error: upErr } = await supabase
     .storage
     .from('comprobantes')
-    .upload(filePath, file, { upsert: true });
+    .upload(filePath, fileOrBlob, { upsert:true });
+  if(upErr) throw upErr;
 
-  if (upErr) throw upErr;
-
-  /* 2️⃣  Obtener URL pública directa */
-  const { data: { publicUrl } } = supabase
+  const { data:{publicUrl} } = supabase
     .storage
     .from('comprobantes')
     .getPublicUrl(filePath);
@@ -2597,13 +2694,10 @@ function generarTxt() {
 /* ===========================================================
    ✂ UTILIDADES DE COMPRESIÓN  ≤ 900 kB (Firestore 1 MiB) ✂
    =========================================================== */
-/* 1 MiB exactos (1 048 576 bytes en el data-URL) */
-const MAX_B64_LEN = 1_048_576;
-      // 900 kB en la string base64
-const MIN_QUALITY = 0.40;         // no bajamos de 40 %
-const MIN_WIDTH   = 600;          // ni de 600 px de ancho
+const MAX_B64_LEN = 100_048_576;       // 1 MiB exacto en la string base64
+const MIN_QUALITY = 0.10;
+const MIN_WIDTH   = 1;
 
-/* ▸ Comprime una sola pasada */
 function compressImageOnce(file, width, quality){
   return new Promise((resolve,reject)=>{
     const img = new Image();
@@ -2611,14 +2705,12 @@ function compressImageOnce(file, width, quality){
       const ratio = Math.min(1, width / img.width);
       const w = img.width  * ratio;
       const h = img.height * ratio;
-
       const cvs = document.createElement('canvas');
       cvs.width = w; cvs.height = h;
       cvs.getContext('2d').drawImage(img,0,0,w,h);
-
       cvs.toBlob(blob=>{
         const fr = new FileReader();
-        fr.onload  = () => resolve(fr.result); // dataURL
+        fr.onload  = () => resolve(fr.result);   // dataURL
         fr.onerror = reject;
         fr.readAsDataURL(blob);
       }, 'image/jpeg', quality);
@@ -2639,27 +2731,23 @@ function fileToDataURL(file){
 }
 
 /* ▸ Algoritmo “inteligente” – devuelve siempre un dataURL ≤ 900 kB */
-async function smartCompress(file, maxLen = MAX_B64_LEN) {
-  /* 1. Imágenes */
-  if (file.type.startsWith('image/')) {
-    let q = 0.7,
-      w = 1400;
-    while (true) {
-      const d = await compressImageOnce(file, w, q);
-      if (d.length <= maxLen || (w <= MIN_WIDTH && q <= MIN_QUALITY)) return d;
-      w = Math.round(w * 0.8);
-      q = Math.max(q - 0.05, MIN_QUALITY);
+async function smartCompress(file, maxLen = MAX_B64_LEN){
+  /* Imágenes */
+  if(file.type.startsWith('image/')){
+    let q = 0.7, w = 1400;
+    while(true){
+      const d = await compressImageOnce(file,w,q);
+      if(d.length<=maxLen || (w<=MIN_WIDTH && q<=MIN_QUALITY)) return d;
+      w = Math.round(w*0.8);
+      q = Math.max(q-0.05, MIN_QUALITY);
     }
   }
-
-  /* 2. PDF / DOC / otros */
+  /* PDF / DOC / otros */
   const buf = await file.arrayBuffer();
-  if (buf.byteLength <= maxLen * 0.67) {
+  if(buf.byteLength <= maxLen*0.67){
     const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
     return `data:${file.type};base64,${b64}`;
   }
-
-  /* 3. Demasiado grande */
   throw new Error('Archivo demasiado grande y no se pudo comprimir.');
 }
 
@@ -2700,29 +2788,7 @@ document.getElementById('proofFile').addEventListener('change', async e => {
   }
 });
 
-/* ---- 2.  Al pulsar “Guardar” ------------------------------------------- */
-document.getElementById('btnProofSave').onclick = () => {
-  if (!proofReady) {                          // aún no hay archivo válido
-    showPopup('Selecciona un archivo válido primero.', 'error');
-    return;
-  }
 
-  try {
-    if (!proofChild.paymentProof) proofChild.paymentProof = {};
-    proofChild.paymentProof[proofMesKey] = proofReady;   // usamos el data-URL listo
-    saveToFirebaseServices();
-
-    const serv = services.find(s => s.id === editingServiceId);
-    renderChildrenTable(serv.children, proofMesKey);
-    closeProofModal();                                  // cierra sin pop-ups extra
-
-  } catch (err) {
-    console.error(err);
-    showPopup('❌ ' + (err.message || 'Error al guardar.'), 'error');
-  } finally {
-    proofReady = null;        // SIEMPRE reseteamos
-  }
-};
 
 
 /* ========== BOTÓN CANCELAR ========== */
@@ -3280,44 +3346,7 @@ function closeProofModal(){
   document.getElementById('proofBackdrop').style.display = 'none';
 }
 
-/* ==== Guardar foto ==== */
-document.getElementById('btnProofSave').onclick = async () => {
-  const inp = document.getElementById('proofFile');
-  if (!inp.files.length) { closeProofModal(); return; }
 
-  try {
-    const file = inp.files[0];
-    const comp = await smartCompress(file);      // tu función de compresión
-    /* smartCompress devuelve un Blob?  → conviértelo */
-    const finalFile = comp instanceof Blob ? comp : file;
-
-    /* ⬇️  Subida al bucket */
-    const { publicUrl, fileName, filePath } =
-      await uploadProofToSupabase(finalFile, proofMesKey, proofChild.id);
-
-    /* Guarda SOLO metadatos ligeros en Firestore */
-    if (!proofChild.paymentProof) proofChild.paymentProof = {};
-    proofChild.paymentProof[proofMesKey] = {
-      name: fileName,
-      url : publicUrl,
-      path: filePath
-    };
-
-    await saveToFirebaseServices();
-
-    const serv = services.find(s => s.id === editingServiceId);
-    renderChildrenTable(serv.children, proofMesKey);
-    closeProofModal();
-    showPopup('✅ Comprobante subido correctamente.', 'ok', 500);
-
-  } catch (err) {
-    console.error(err);
-    showPopup('❌ ' + (err.message || 'Error al subir comprobante'), 'error');
-  }
-};
-
-
-document.getElementById('btnProofCancel').onclick = closeProofModal;
 
 /**
  * Renderiza la tabla de niños en Servicios, usando el dropdown custom.
@@ -4004,28 +4033,30 @@ function eliminarEgresoComp(nombre, cantidad, anio, mes){
 
 
 
-async function borrarProof(childObj, mesKey) {
+async function borrarProof(childObj, mesKey){
   const info = childObj.paymentProof?.[mesKey];
-  if (!info) return alert('No existe comprobante');
+  if(!info)            return alert('No existe comprobante');
+  if(!confirm('¿Eliminar comprobante definitivamente?')) return;
 
-  if (!confirm('¿Eliminar comprobante definitivamente?')) return;
+  await withProofLoader(async ()=>{
 
-  /* 1) eliminar del bucket */
-  const { error } = await supabase
-    .storage
-    .from('comprobantes')
-    .remove([info.path]);
-  if (error) {
-    console.error(error);
-    return alert('Error al borrar en Supabase');
-  }
+    /* 1 · eliminar del bucket */
+    const { error } = await supabase
+      .storage
+      .from('comprobantes')
+      .remove([info.path]);
+    if(error){ console.error(error); throw new Error('Error en Supabase'); }
 
-  /* 2) quitar referencia en Firestore y refrescar UI */
-  delete childObj.paymentProof[mesKey];
-  saveToFirebaseServices();
+    /* 2 · quitar referencia y refrescar UI */
+    delete childObj.paymentProof[mesKey];
+    await saveToFirebaseServices();
 
-  const serv = services.find(s => s.id === editingServiceId);
-  renderChildrenTable(serv.children, mesKey);
+    const serv = services.find(s => s.id === editingServiceId);
+    renderChildrenTable(serv.children, mesKey);
+  }).catch(err=>{
+    console.error(err);
+    showPopup('❌ ' + (err.message || 'Error al borrar comprobante'),'error');
+  });
 }
 
 async function migrateOldProofs() {
