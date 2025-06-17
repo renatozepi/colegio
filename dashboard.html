@@ -1871,6 +1871,65 @@ function styleSheet(ws, data) {
     }
   }
 }
+/* ░░░ MIGRACIÓN DE COMPROBANTES BASE-64 ░░░ */
+/* ░░░ MIGRACIÓN v2 ░░░  –  renombra “.blob” binarios reales  */
+window.migrateOldProofs = async function migrateOldProofs(){
+  let procesados = 0, renombrados = 0;
+
+  for(const serv of services){
+    for(const ch of serv.children){
+      const proofs = ch.paymentProof || {};
+      for(const [mes,info] of Object.entries(proofs)){
+        procesados++;
+        if(!info.filePath.endsWith('.blob')) continue;   // ya corregido
+
+        try{
+          /* ① descargamos el objeto */
+          const res  = await fetch(info.url,{mode:'cors'});
+          const mime = res.headers.get('content-type') || '';
+          const body = await res.blob();
+
+          /* — si era texto/plain seguimos con la lógica del v1 — */
+          if (mime.startsWith('text/plain')) {
+            const text = await body.text();
+            if(!text.startsWith('data:')) continue;      // algo raro, omitimos
+
+            const { publicUrl,fileName,filePath } =
+              await uploadProofToSupabase(text, mes, ch.id);
+
+            await supabase.storage.from('comprobantes').remove([info.path]);
+            proofs[mes] = { name:fileName,url:publicUrl,path:filePath };
+            renombrados++;
+          }
+          /* — si YA es binario: solo re-subimos con extensión real — */
+          else{
+            const extMap = {
+              'image/png':'png','image/jpeg':'jpg','image/webp':'webp',
+              'application/pdf':'pdf',
+              'application/msword':'doc',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx'
+            };
+            const ext = extMap[mime] || mime.split('/').pop() || 'bin';
+
+            const { publicUrl,fileName,filePath } =
+              await uploadProofToSupabase(
+                     new File([body], `file.${ext}`, {type:mime}),
+                     mes, ch.id);
+
+            await supabase.storage.from('comprobantes').remove([info.path]);
+            proofs[mes] = { name:fileName,url:publicUrl,path:filePath };
+            renombrados++;
+          }
+
+        }catch(e){ console.error('Error migrando',info.path,e); }
+      }
+    }
+  }
+
+  if(renombrados) await saveToFirebaseServices();
+  alert(`Renombrados correctamente: ${renombrados} / ${procesados}`);
+};
+
 
 // 4) Exporta Histórico o Actual, incluyendo deuda por atrasos y parciales
 function exportServiceExcel(type){
@@ -1937,34 +1996,33 @@ const totalDebt = partialDebt + overdueDebt + currentDebt;
   const fecha=`${d.getDate().toString().padStart(2,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getFullYear()}`;
   XLSX.writeFile(wb,`${type} - ${serv.title} - ${fecha}.xlsx`);
 }
-document.getElementById('btnProofSave')
-  .onclick = () => withProofLoader(async () => {
+document.getElementById('btnProofSave').onclick =
+  () => withProofLoader(async () => {
 
     const inp = document.getElementById('proofFile');
     if (!inp.files.length){ closeProofModal(); return; }
 
-    /* 1 · comprimir */
-    const file     = inp.files[0];
-    const compBlob = await smartCompress(file);
+    const file = inp.files[0];
+    const preparado = await smartCompress(file);   //  string ó Blob
 
-    /* 2 · subir a Supabase */
+    /* subida */
     const { publicUrl, fileName, filePath } =
-      await uploadProofToSupabase(compBlob, proofMesKey, proofChild.id);
+      await uploadProofToSupabase(preparado, proofMesKey, proofChild.id);
 
-    /* 3 · guardar metadatos en Firestore */
+
+    /* guardado en el niño */
     if (!proofChild.paymentProof) proofChild.paymentProof = {};
     proofChild.paymentProof[proofMesKey] = {
       name:fileName, url:publicUrl, path:filePath
     };
     await saveToFirebaseServices();
 
-    /* 4 · refrescar UI */
+    /* refresco UI */
     const serv = services.find(s => s.id === editingServiceId);
     renderChildrenTable(serv.children, proofMesKey);
     closeProofModal();
     showPopup('✅ Comprobante subido correctamente.','ok',500);
   });
-
 /* ============================================================
  * 5️⃣  (opcional) asegúrate de tener closeProofModal:
  * ============================================================ */
@@ -2015,6 +2073,43 @@ document.addEventListener('DOMContentLoaded', addExportButtons);
     console.error("Error loading finanzas data:", error);
   }
 }
+export async function subirFoto(file) {
+  // 1️⃣ conserva la extensión real
+  const ext       = file.name.split('.').pop();          // ej. "jpg"
+  const fileName  = `${Date.now()}.${ext}`;              // 1710521234.jpg
+  const path      = `fotos/${fileName}`;                 // carpeta opcional
+
+  // 2️⃣ indica el content-type; sin esto el navegador no sabe que es una imagen
+  const { data, error } = await supabase
+    .storage
+    .from('comprobantes')          // tu bucket
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type      // "image/jpeg", "image/png", ...
+    });
+
+  if (error) throw error;         // si hay problema para aquí mismo
+  return data.path;               // guarda esto para bajarla luego
+}
+// --------- DESCARGAR (sin que se abra como texto) ----------
+export async function descargarFoto(path) {
+  // Opción A: usar `download` y forzar descarga local
+  const { data, error } = await supabase
+    .storage
+    .from('comprobantes')
+    .download(path);
+
+  if (error) throw error;
+
+  // crea un enlace temporal y simula clic
+  const url = URL.createObjectURL(data);      // data es un Blob real
+  const a   = document.createElement('a');
+  a.href        = url;
+  a.download    = path.split('/').pop();      // mismo nombre del archivo
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function calcularVariacion(mesKey) {
   const [y,m] = mesKey.split('-').map(Number);
   let ay=y, am=m-1;
@@ -2370,19 +2465,41 @@ function applyPermissionsToMenus() {
       console.error("Error loading macros from Firebase:", error);
     }
   }
-async function uploadProofToSupabase(fileOrBlob, mesKey, childId){
+async function uploadProofToSupabase(fileOrData, mesKey, childId){
+  /* ── 1.  Normalizar a Blob ─────────────────────────────── */
+  let blob, ext, mime;
+
+  if (typeof fileOrData === 'string') {                 //  data-URL
+    /* data:image/png;base64,AAAA… → split */
+    const [header, b64] = fileOrData.split(',');
+    mime = header.match(/data:(.*?);/)[1];              // image/png
+    ext  = mime.split('/').pop();                       // png
+
+    /* decodificamos Base-64 */
+    const bin  = atob(b64);
+    const buf  = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+    blob = new Blob([buf], { type: mime });
+
+  } else {                                              //  File / Blob
+    blob = fileOrData;
+    mime = blob.type || 'application/octet-stream';
+    ext  = (blob.name || 'file').split('.').pop();
+  }
+
+  /* ── 2.  Generar ruta destino ─────────────────────────── */
   const dir      = `${mesKey}/${childId}`;
-  const ext      = (fileOrBlob.name||'blob').split('.').pop();
   const fileName = `${Date.now()}.${ext}`;
   const filePath = `${dir}/${fileName}`;
 
-  const { error: upErr } = await supabase
+  /* ── 3.  Subir a Supabase Storage ─────────────────────── */
+  const { error } = await supabase
     .storage
     .from('comprobantes')
-    .upload(filePath, fileOrBlob, { upsert:true });
-  if(upErr) throw upErr;
+    .upload(filePath, blob, { upsert:true, contentType:mime });
 
-  const { data:{publicUrl} } = supabase
+  if (error) throw error;
+
+  const { data:{ publicUrl } } = supabase
     .storage
     .from('comprobantes')
     .getPublicUrl(filePath);
@@ -2689,7 +2806,7 @@ function generarTxt() {
 /* ===========================================================
    ✂ UTILIDADES DE COMPRESIÓN  ≤ 900 kB (Firestore 1 MiB) ✂
    =========================================================== */
-const MAX_B64_LEN = 100_048_576;       // 1 MiB exacto en la string base64
+const MAX_B64_LEN = 100_048_576;   // 1 MiB en Base-64
 const MIN_QUALITY = 0.10;
 const MIN_WIDTH   = 1;
 
@@ -2726,26 +2843,10 @@ function fileToDataURL(file){
 }
 
 /* ▸ Algoritmo “inteligente” – devuelve siempre un dataURL ≤ 900 kB */
-async function smartCompress(file, maxLen = MAX_B64_LEN){
-  /* Imágenes */
-  if(file.type.startsWith('image/')){
-    let q = 0.7, w = 1400;
-    while(true){
-      const d = await compressImageOnce(file,w,q);
-      if(d.length<=maxLen || (w<=MIN_WIDTH && q<=MIN_QUALITY)) return d;
-      w = Math.round(w*0.8);
-      q = Math.max(q-0.05, MIN_QUALITY);
-    }
-  }
-  /* PDF / DOC / otros */
-  const buf = await file.arrayBuffer();
-  if(buf.byteLength <= maxLen*0.67){
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-    return `data:${file.type};base64,${b64}`;
-  }
-  throw new Error('Archivo demasiado grande y no se pudo comprimir.');
+async function smartCompress(file){
+  /* devolvemos el archivo original, sin transcodificar ni re-escalar */
+  return file;            // File | Blob
 }
-
 /* ===========================================================
    NUEVA LÓGICA DE SUBIDA  – pop-up en el intento de “subir”
    =========================================================== */
@@ -3629,15 +3730,101 @@ function replaceCellWithInput(td, value, cls){
   inp.style.borderRadius = '6px';
   td.innerHTML = ''; td.appendChild(inp);
 }
-function downloadProof(childObj, mesKey) {
+/* ========= descarga segura de comprobantes ========= */
+/* ==========================================================
+   DESCARGAR COMPROBANTE – compatible con registros antiguos
+   ========================================================== */
+/* ============================================================
+   1️⃣  DESCARGAR COMPROBANTE  – tolerante a los .blob heredados
+   ============================================================ */
+async function downloadProof(childObj, mesKey) {
   const info = childObj.paymentProof?.[mesKey];
-  if (!info) return alert('Sin comprobante');
+  if (!info) return alert('⚠️  Sin comprobante registrado');
 
-  const a = document.createElement('a');
-  a.href = info.url;
-  a.download = info.name;
-  a.click();
+  try {
+    /* 1 · Bajamos el objeto que haya en Supabase ---------------- */
+    const res   = await fetch(info.url, { mode: 'cors' });
+    const blobO = await res.blob();                        // “Original”
+    let   blobF = blobO;                                   // “Final”
+    let   mime  = (blobO.type || '').split(';')[0];        // image/png …
+
+    /* 2 · Caso legacy: era text/plain con una data-URL dentro --- */
+    if (mime === 'text/plain') {
+      const txt = await blobO.text();
+      const m   = txt.match(/^data:([^;]+);base64,(.+)$/);
+      if (!m) throw new Error('Formato legacy desconocido');
+
+      mime  = m[1];                                        // image/jpeg…
+      const bin = atob(m[2]);
+      const buf = Uint8Array.from(bin, c => c.charCodeAt(0));
+      blobF = new Blob([buf], { type: mime });
+    }
+
+    /* 3 · Extensión adecuada ----------------------------------- */
+    const extMap = {
+      'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif',
+      'application/pdf':'pdf',
+      'application/msword':'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx',
+      'text/plain':'txt'
+    };
+    const ext   = extMap[mime] || mime.split('/').pop() || 'bin';
+    let   fname = (info.name || `comprobante.${ext}`).replace(/\.(blob|bin|plain|txt)$/i, '.'+ext);
+
+    /* 4 · Disparar la descarga sin abrir pestaña ---------------- */
+    const urlTmp = URL.createObjectURL(blobF);
+    const a = Object.assign(document.createElement('a'), { href:urlTmp, download: fname });
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(urlTmp);
+
+  } catch (err) {
+    console.error(err);
+    alert('❌ No se pudo descargar el comprobante');
+  }
 }
+/* ==============================================================
+   MIGRAR COMPROBANTES LEGACY  (.blob / .bin / .plain / .txt)
+   ============================================================== */
+/* ============================================================
+   2️⃣  MIGRACIÓN MASIVA  (ejecútala una única vez en consola)
+   ============================================================ */
+window.migrateLegacyProofs = async function () {
+  let procesados = 0, reparados = 0;
+
+  for (const serv of services) {
+    for (const ch of serv.children) {
+      const proofs = ch.paymentProof || {};
+      for (const [mes, info] of Object.entries(proofs)) {
+        procesados++;
+        if (!/\.(blob|bin|plain|txt)$/i.test(info.path || '')) continue;
+
+        try {
+          /* a) descargamos el objeto ----------------------------------- */
+          const res   = await fetch(info.url, { mode: 'cors' });
+          const mime  = (res.headers.get('content-type') || '').split(';')[0];
+          const blobO = await res.blob();
+
+          /* b) si era texto con data-URL → dejamos que uploadProof lo trate */
+          const uploadable =
+                mime === 'text/plain' ? await blobO.text()
+                                      : new File([blobO], `file.${mime.split('/').pop()}`, { type: mime });
+
+          /* c) nueva subida + borrado antigua --------------------------- */
+          const { publicUrl, fileName, filePath } =
+                await uploadProofToSupabase(uploadable, mes, ch.id);
+
+          await supabase.storage.from('comprobantes').remove([info.path]);
+
+          proofs[mes] = { name: fileName, url: publicUrl, path: filePath };
+          reparados++;
+
+        } catch (e) { console.error('Error migrando', info.path, e); }
+      }
+    }
+  }
+  if (reparados) await saveToFirebaseServices();
+  alert(`Migración completada: ${reparados}/${procesados} comprobantes reparados`);
+};
 
 function createInlineInput(val) {
   const inp = document.createElement('input');
@@ -4021,23 +4208,7 @@ async function borrarProof(childObj, mesKey){
   });
 }
 
-async function migrateOldProofs() {
-  for (const s of services) {
-    for (const c of s.children) {
-      for (const [mes, info] of Object.entries(c.paymentProof || {})) {
-        if (!info.data?.startsWith('data:')) continue;  // ya migrado
 
-        const blob = await (await fetch(info.data)).blob();
-        const { publicUrl, fileName, filePath } =
-          await uploadProofToSupabase(blob, mes, c.id);
-
-        c.paymentProof[mes] = { name: fileName, url: publicUrl, path: filePath };
-      }
-    }
-  }
-  await saveToFirebaseServices();
-  console.log('✅ Migración terminada');
-}
 /* ------------ EDITAR ------------   */
 /* Carga en el formulario el egreso seleccionado                    */
 function editarEgresoComp(nombre, cantidad, anio, mes){
@@ -5376,6 +5547,8 @@ document.addEventListener('keydown', e => {
     window.openDayPicker = openDayPicker;
     window.editUser   = editUser;
     window.deleteUser = deleteUser;
+window.migrateLegacyProofs = migrateLegacyProofs;
+window.migrateOldProofs    = migrateOldProofs;
   });
 </script>
 </body>
