@@ -3711,34 +3711,33 @@ function replaceCellWithInput(td, value, cls){
 /* ==========================================================
    DESCARGAR COMPROBANTE – compatible con registros antiguos
    ========================================================== */
-async function downloadProof(childObj, mesKey){
+/* ============================================================
+   1️⃣  DESCARGAR COMPROBANTE  – tolerante a los .blob heredados
+   ============================================================ */
+async function downloadProof(childObj, mesKey) {
   const info = childObj.paymentProof?.[mesKey];
-  if(!info){ return alert('⚠️ Sin comprobante registrado'); }
+  if (!info) return alert('⚠️  Sin comprobante registrado');
 
-  try{
-    /* ─ 1. Descargamos el objeto almacenado ───────────────── */
-    const resp        = await fetch(info.url, { mode:'cors' });
-    const blobOriginal= await resp.blob();
-    let   blobFinal   = blobOriginal;
-    let   mimeFinal   = (blobOriginal.type || '').split(';')[0].trim();   // sin charset
+  try {
+    /* 1 · Bajamos el objeto que haya en Supabase ---------------- */
+    const res   = await fetch(info.url, { mode: 'cors' });
+    const blobO = await res.blob();                        // “Original”
+    let   blobF = blobO;                                   // “Final”
+    let   mime  = (blobO.type || '').split(';')[0];        // image/png …
 
-    /* ─ 2. Casos legacy: text/plain con data-URL dentro ────── */
-    if(mimeFinal === 'text/plain'){
-      const txt = await blobOriginal.text();
+    /* 2 · Caso legacy: era text/plain con una data-URL dentro --- */
+    if (mime === 'text/plain') {
+      const txt = await blobO.text();
       const m   = txt.match(/^data:([^;]+);base64,(.+)$/);
+      if (!m) throw new Error('Formato legacy desconocido');
 
-      if(m){                                             // data:image/…;base64,AAAA
-        mimeFinal = m[1];                                // p.ej. image/png
-        const bin  = atob(m[2]);
-        const buf  = Uint8Array.from(bin, c => c.charCodeAt(0));
-        blobFinal  = new Blob([buf], { type: mimeFinal }); // ← blob binario real
-      }else{
-        // No estaba en data-URL → se deja como .txt
-        mimeFinal = 'text/plain';
-      }
+      mime  = m[1];                                        // image/jpeg…
+      const bin = atob(m[2]);
+      const buf = Uint8Array.from(bin, c => c.charCodeAt(0));
+      blobF = new Blob([buf], { type: mime });
     }
 
-    /* ─ 3. Extensiones adecuadas ──────────────────────────── */
+    /* 3 · Extensión adecuada ----------------------------------- */
     const extMap = {
       'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif',
       'application/pdf':'pdf',
@@ -3746,20 +3745,16 @@ async function downloadProof(childObj, mesKey){
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx',
       'text/plain':'txt'
     };
-    const guessedExt = extMap[mimeFinal] || mimeFinal.split('/').pop() || 'bin';
+    const ext   = extMap[mime] || mime.split('/').pop() || 'bin';
+    let   fname = (info.name || `comprobante.${ext}`).replace(/\.(blob|bin|plain|txt)$/i, '.'+ext);
 
-    /* ─ 4. Nombre del archivo limpio ─────────────────────── */
-    let fileName = info.name || `comprobante.${guessedExt}`;
-    fileName = fileName.replace(/\.(blob|bin|plain|txt)$/i, '.'+guessedExt);
-
-    /* ─ 5. Disparamos la descarga ────────────────────────── */
-    const tmp = URL.createObjectURL(blobFinal);
-    const a   = document.createElement('a');
-    a.href = tmp; a.download = fileName;
+    /* 4 · Disparar la descarga sin abrir pestaña ---------------- */
+    const urlTmp = URL.createObjectURL(blobF);
+    const a = Object.assign(document.createElement('a'), { href:urlTmp, download: fname });
     document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(tmp);
+    URL.revokeObjectURL(urlTmp);
 
-  }catch(err){
+  } catch (err) {
     console.error(err);
     alert('❌ No se pudo descargar el comprobante');
   }
@@ -3767,53 +3762,46 @@ async function downloadProof(childObj, mesKey){
 /* ==============================================================
    MIGRAR COMPROBANTES LEGACY  (.blob / .bin / .plain / .txt)
    ============================================================== */
-window.migrateLegacyProofs = async function(){
+/* ============================================================
+   2️⃣  MIGRACIÓN MASIVA  (ejecútala una única vez en consola)
+   ============================================================ */
+window.migrateLegacyProofs = async function () {
   let procesados = 0, reparados = 0;
 
-  for(const serv of services){
-    for(const ch of serv.children){
+  for (const serv of services) {
+    for (const ch of serv.children) {
       const proofs = ch.paymentProof || {};
-      for(const [mes,info] of Object.entries(proofs)){
+      for (const [mes, info] of Object.entries(proofs)) {
         procesados++;
+        if (!/\.(blob|bin|plain|txt)$/i.test(info.path || '')) continue;
 
-        /* ¿Aún es un archivo legado? */
-        if(!/\.(blob|bin|plain|txt)$/i.test(info.path || '')) continue;
+        try {
+          /* a) descargamos el objeto ----------------------------------- */
+          const res   = await fetch(info.url, { mode: 'cors' });
+          const mime  = (res.headers.get('content-type') || '').split(';')[0];
+          const blobO = await res.blob();
 
-        try{
-          const res  = await fetch(info.url,{mode:'cors'});
-          const mime = (res.headers.get('content-type') || '').split(';')[0].trim();
-          const body = await res.blob();
+          /* b) si era texto con data-URL → dejamos que uploadProof lo trate */
+          const uploadable =
+                mime === 'text/plain' ? await blobO.text()
+                                      : new File([blobO], `file.${mime.split('/').pop()}`, { type: mime });
 
-          /* ── Caso texto con data-URL ── */
-          let uploadable;
-          if(mime === 'text/plain'){
-            const txt = await body.text();
-            if(!txt.startsWith('data:')) continue;       // algo raro
-            uploadable = txt;                            // se sube como data-URL
-          }else{
-            /* Blob real → lo envolvemos en File para conservar extensión */
-            const ext = mime.split('/').pop() || 'bin';
-            uploadable = new File([body], `file.${ext}`, { type:mime });
-          }
-
-          /* Subida nueva + borrado antigua */
-          const { publicUrl,fileName,filePath } =
+          /* c) nueva subida + borrado antigua --------------------------- */
+          const { publicUrl, fileName, filePath } =
                 await uploadProofToSupabase(uploadable, mes, ch.id);
 
           await supabase.storage.from('comprobantes').remove([info.path]);
 
-          proofs[mes] = { name:fileName, url:publicUrl, path:filePath };
+          proofs[mes] = { name: fileName, url: publicUrl, path: filePath };
           reparados++;
 
-        }catch(e){ console.error('❌ Error migrando',info.path,e); }
+        } catch (e) { console.error('Error migrando', info.path, e); }
       }
     }
   }
-  if(reparados) await saveToFirebaseServices();
-  alert(`✅ Migración terminada: ${reparados}/${procesados} comprobantes reparados`);
+  if (reparados) await saveToFirebaseServices();
+  alert(`Migración completada: ${reparados}/${procesados} comprobantes reparados`);
 };
-
-
 
 function createInlineInput(val) {
   const inp = document.createElement('input');
