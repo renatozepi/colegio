@@ -1998,28 +1998,27 @@ const totalDebt = partialDebt + overdueDebt + currentDebt;
 }
 document.getElementById('btnProofSave').onclick =
   () => withProofLoader(async () => {
-
     const inp = document.getElementById('proofFile');
-    if (!inp.files.length){ closeProofModal(); return; }
-
+    if (!inp.files.length) { closeProofModal(); return; }
     const file = inp.files[0];
-    const preparado = await smartCompress(file);   //  string ó Blob
 
-    /* subida */
+    // Subida con la ruta corregida (uploadProofToSupabase debe ya usar serviceTitle/childName)
     const { publicUrl, fileName, filePath } =
-      await uploadProofToSupabase(preparado, proofMesKey, proofChild.id);
+      await uploadProofToSupabase(file, proofMesKey, proofChild);
 
-
-    /* guardado en el niño */
+    // Guardado en el objeto niño (sin asignar fecha automáticamente)
     if (!proofChild.paymentProof) proofChild.paymentProof = {};
     proofChild.paymentProof[proofMesKey] = {
-      name:fileName, url:publicUrl, path:filePath
+      name: fileName,
+      url:  publicUrl,
+      path: filePath
     };
     await saveToFirebaseServices();
 
-    /* refresco UI */
+    // Refrescar la tabla sin tocar proofChild.fechaPagoPorMes
     const serv = services.find(s => s.id === editingServiceId);
     renderChildrenTable(serv.children, proofMesKey);
+
     closeProofModal();
     showPopup('✅ Comprobante subido correctamente.','ok',500);
   });
@@ -2027,7 +2026,12 @@ document.getElementById('btnProofSave').onclick =
  * 5️⃣  (opcional) asegúrate de tener closeProofModal:
  * ============================================================ */
 
-
+function sanitizeKeyComponent(str) {
+  return str
+    .normalize('NFD')                   // descompone acentos
+    .replace(/[\u0300-\u036f]/g, '')    // quita las marcas de acento
+    .replace(/[^\w\-]+/g, '_');         // todo lo demás no alfanumérico → underscore
+}
 
 // 5) Wrappers de llamada
 function exportServiceHistoric() { exportServiceExcel('Histórico'); }
@@ -2465,40 +2469,42 @@ function applyPermissionsToMenus() {
       console.error("Error loading macros from Firebase:", error);
     }
   }
-async function uploadProofToSupabase(fileOrData, mesKey, childId){
-  /* ── 1.  Normalizar a Blob ─────────────────────────────── */
+/**
+ * 2) uploadProofToSupabase: sube al bucket “comprobantes” en
+ *    serviceSafe/childSafe/mesKey/filename.ext y devuelve publicUrl
+ */
+async function uploadProofToSupabase(fileOrData, mesKey, childObj) {
+  // — normalizar a Blob —
   let blob, ext, mime;
-
-  if (typeof fileOrData === 'string') {                 //  data-URL
-    /* data:image/png;base64,AAAA… → split */
-    const [header, b64] = fileOrData.split(',');
-    mime = header.match(/data:(.*?);/)[1];              // image/png
-    ext  = mime.split('/').pop();                       // png
-
-    /* decodificamos Base-64 */
-    const bin  = atob(b64);
-    const buf  = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+  if (typeof fileOrData === 'string') {
+    const [hdr,b64] = fileOrData.split(',');
+    mime = hdr.match(/data:(.*?);/)[1];
+    ext  = mime.split('/').pop();
+    const bin = atob(b64);
+    const buf = Uint8Array.from(bin, c=>c.charCodeAt(0));
     blob = new Blob([buf], { type: mime });
-
-  } else {                                              //  File / Blob
+  } else {
     blob = fileOrData;
     mime = blob.type || 'application/octet-stream';
-    ext  = (blob.name || 'file').split('.').pop();
+    ext  = (blob.name||'file').split('.').pop();
   }
 
-  /* ── 2.  Generar ruta destino ─────────────────────────── */
-  const dir      = `${mesKey}/${childId}`;
-  const fileName = `${Date.now()}.${ext}`;
-  const filePath = `${dir}/${fileName}`;
+  // — sanitizar rutas —
+  const serviceSafe = sanitizeKeyComponent(editingServiceTitle);
+  const childSafe   = sanitizeKeyComponent(`${childObj.name}_${childObj.lastname}`);
 
-  /* ── 3.  Subir a Supabase Storage ─────────────────────── */
+  // — construir filename + key —
+  const fileName = `${Date.now()}.${ext}`;
+  const filePath = `${serviceSafe}/${childSafe}/${mesKey}/${fileName}`;
+
+  // — subir a Supabase —
   const { error } = await supabase
     .storage
     .from('comprobantes')
-    .upload(filePath, blob, { upsert:true, contentType:mime });
-
+    .upload(filePath, blob, { upsert: true, contentType: mime });
   if (error) throw error;
 
+  // — obtener URL pública —
   const { data:{ publicUrl } } = supabase
     .storage
     .from('comprobantes')
@@ -2506,7 +2512,147 @@ async function uploadProofToSupabase(fileOrData, mesKey, childId){
 
   return { publicUrl, fileName, filePath };
 }
-  async function saveToFirebaseMacros(){
+
+
+
+/* ——— 2) btnProofSave.onclick — eliminar asignación automática de fecha — */
+document.getElementById('btnProofSave').onclick =
+  () => withProofLoader(async () => {
+    const inp = document.getElementById('proofFile');
+    if (!inp.files.length) { closeProofModal(); return; }
+    const file = inp.files[0];
+    // Subida
+    const { publicUrl, fileName, filePath } =
+      await uploadProofToSupabase(file, proofMesKey, proofChild);
+    // Guardado en el objeto niño
+    if (!proofChild.paymentProof) proofChild.paymentProof = {};
+    proofChild.paymentProof[proofMesKey] = {
+      name: fileName,
+      url:  publicUrl,
+      path: filePath
+    };
+    await saveToFirebaseServices();
+    // REFRESCO: NO tocar proofChild.fechaPagoPorMes aquí
+    const serv = services.find(s => s.id === editingServiceId);
+    renderChildrenTable(serv.children, proofMesKey);
+    closeProofModal();
+    showPopup('✅ Comprobante subido correctamente.','ok',500);
+  });
+function normalizeServiceTitle(title) {
+  return title
+    .replace(/\s*\/\s*/g, "_")               // “ / ” → “_”
+    .normalize("NFD")                        // quita tildes
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9_]+/g, "_");        // cualquier otro carácter → “_”
+}
+// ------------------------------------------------------------------
+// Sustituye tu función `migrateProofsToNewStructure` por esta.
+// ------------------------------------------------------------------
+async function migrateProofsToNewStructure() {
+  console.log("🔄 Iniciando migración…")
+
+  // --- 1) Carga tus servicios desde Firestore ---
+  const ref  = doc(db, "data", "servicesData")
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error("No existe data/servicesData en Firestore")
+  const services = snap.data().services || []
+
+  // --- 2) Construye 3 mapas:
+  //    a) folderToService["Nombre_Apellido"] = "Servicio_Normalizado"
+  //    b) idToName[idNum]              = "Nombre_Apellido"
+  //    c) idToService[idNum]           = "Servicio_Normalizado"
+  const folderToService = {}
+  const idToName        = {}
+  const idToService     = {}
+
+  for (const srv of services) {
+    const srvFolder = normalizeServiceTitle(srv.title)
+    for (const ch of srv.children || []) {
+      // extrae id, name y lastname del child
+      const id       = ch.ficha?.id    ?? ch.id
+      const name     = ch.ficha?.name  ?? ch.name
+      const lastname = ch.ficha?.lastname ?? ch.lastname
+      if (!id || !name || !lastname) {
+        console.warn("⚠️  Child incompleto:", ch)
+        continue
+      }
+      const personFolder = normalizePersonName(name, lastname)
+      folderToService[personFolder] = srvFolder
+      idToName[id]                  = personFolder
+      idToService[id]               = srvFolder
+    }
+  }
+
+  console.log("📦 Mapa nombre→servicio:", folderToService)
+  console.log("📦 Mapa id→nombre:", idToName)
+
+  // --- 3) Prepara el bucket de Supabase ---
+  const bucket = supabase.storage.from(BUCKET)
+
+  // --- 4) Lista carpetas de meses en la raíz ---
+  const { data: meses, error: errMeses } = await bucket.list("", { level: "list" })
+  if (errMeses) throw errMeses
+
+  for (const m of meses) {
+    const mes = m.name     // e.g. "2025-03"
+    console.log(`\n— Procesando mes ${mes} —`)
+
+    // --- 5) Lista subcarpetas (actualmente numéricas o ya normalizadas) ---
+    const { data: childs, error: errCF } = await bucket.list(mes, { level: "list" })
+    if (errCF) { console.error(errCF); continue }
+
+    for (const cf of childs) {
+      const folderName = cf.name                  // "1" o "Lorenzo_Marchan"
+      let targetName, targetService
+
+      if (folderToService[folderName]) {
+        // ya estaba bien nombrado
+        targetName    = folderName
+        targetService = folderToService[folderName]
+      } else if (!isNaN(+folderName) && idToName[+folderName]) {
+        // es un ID numérico => conviértelo
+        targetName    = idToName[+folderName]
+        targetService = idToService[+folderName]
+      } else {
+        console.warn(`⚠️  Sin servicio para carpeta "${folderName}", saltando.`)
+        continue
+      }
+
+      const oldPrefix = `${mes}/${folderName}`
+      const newPrefix = `${targetService}/${targetName}/${mes}`
+
+      // --- 6) Lista archivos en esa carpeta antigua ---
+      const { data: files, error: errF } = await bucket.list(oldPrefix, { level: "file" })
+      if (errF) { console.error(errF); continue }
+
+      // --- 7) Mueve y renombra conservando la extensión ---
+      for (const f of files) {
+        const [basename, ext] = f.name.split(/\.(?=[^.]+$)/)
+        const newName         = `${basename}.${ext}`
+        const oldPath         = `${oldPrefix}/${f.name}`
+        const newPath         = `${newPrefix}/${newName}`
+
+        const { error: errMove } = await bucket.move(oldPath, newPath)
+        if (errMove) {
+          console.error(`❌ Error moviendo ${oldPath} → ${newPath}`, errMove)
+        } else {
+          console.log(`✅ ${oldPath} → ${newPath}`)
+        }
+      }
+    }
+  }
+
+  console.log("\n🎉 ¡Migración completada!")
+}
+function normalizePersonName(name, lastname) {
+  return `${name}_${lastname}`
+    .trim()
+    .replace(/\s+/g, "_")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+const BUCKET = "comprobantes"
+async function saveToFirebaseMacros(){
     try {
       const docRef = doc(db, "data", "macrosAlumnos");
       const obj = { macros, nextMacroId, nextAlumnoId };
@@ -3525,9 +3671,9 @@ function renderChildrenTable(childrenArr, mesKey = getYearMonth()) {
     acc.appendChild( mkBtn('⬆',color.up,'Subir comprobante',
       ()=>openProofModal(ch,mesKey)) );
 
-    if(ch.paymentProof?.[mesKey]){
-      acc.appendChild( mkBtn('⬇',color.down,'Descargar comprobante',
-        ()=>downloadProof(ch,mesKey)) );
+if (ch.paymentProof?.[mesKey]) {
+  acc.appendChild( mkBtn('⬇', color.down, 'Descargar comprobante',
+    () => descargarFoto(ch.paymentProof[mesKey].path)) );
       acc.appendChild( mkBtn('✖',color.delProof,'Borrar comprobante',
         ()=>borrarProof(ch,mesKey)) );
     }
@@ -3744,6 +3890,7 @@ async function downloadProof(childObj, mesKey) {
   try {
     /* 1 · Bajamos el objeto que haya en Supabase ---------------- */
     const res   = await fetch(info.url, { mode: 'cors' });
+           a.download = info.name;
     const blobO = await res.blob();                        // “Original”
     let   blobF = blobO;                                   // “Final”
     let   mime  = (blobO.type || '').split(';')[0];        // image/png …
@@ -5547,6 +5694,7 @@ document.addEventListener('keydown', e => {
     window.openDayPicker = openDayPicker;
     window.editUser   = editUser;
     window.deleteUser = deleteUser;
+    window.migrateProofsToNewStructure = migrateProofsToNewStructure;
 window.migrateLegacyProofs = migrateLegacyProofs;
 window.migrateOldProofs    = migrateOldProofs;
   });
