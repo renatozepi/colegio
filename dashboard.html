@@ -1996,32 +1996,7 @@ const totalDebt = partialDebt + overdueDebt + currentDebt;
   const fecha=`${d.getDate().toString().padStart(2,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getFullYear()}`;
   XLSX.writeFile(wb,`${type} - ${serv.title} - ${fecha}.xlsx`);
 }
-document.getElementById('btnProofSave').onclick =
-  () => withProofLoader(async () => {
-    const inp = document.getElementById('proofFile');
-    if (!inp.files.length) { closeProofModal(); return; }
-    const file = inp.files[0];
 
-    // Subida con la ruta corregida (uploadProofToSupabase debe ya usar serviceTitle/childName)
-    const { publicUrl, fileName, filePath } =
-      await uploadProofToSupabase(file, proofMesKey, proofChild);
-
-    // Guardado en el objeto niño (sin asignar fecha automáticamente)
-    if (!proofChild.paymentProof) proofChild.paymentProof = {};
-    proofChild.paymentProof[proofMesKey] = {
-      name: fileName,
-      url:  publicUrl,
-      path: filePath
-    };
-    await saveToFirebaseServices();
-
-    // Refrescar la tabla sin tocar proofChild.fechaPagoPorMes
-    const serv = services.find(s => s.id === editingServiceId);
-    renderChildrenTable(serv.children, proofMesKey);
-
-    closeProofModal();
-    showPopup('✅ Comprobante subido correctamente.','ok',500);
-  });
 /* ============================================================
  * 5️⃣  (opcional) asegúrate de tener closeProofModal:
  * ============================================================ */
