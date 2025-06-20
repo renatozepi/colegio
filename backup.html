@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Descargar Carpeta</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+    }
+    #downloadBtn {
+      padding: 12px 32px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      background: #007bff;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #downloadBtn:disabled {
+      background: #999;
+      cursor: default;
+    }
+    #downloadBtn:hover:not(:disabled) {
+      background: #0056b3;
+    }
+    #folderSelect {
+      margin-top: 24px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      width: 240px;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="downloadBtn">Descargar carpeta</button>
+  <select id="folderSelect">
+    <option value="" disabled selected>Cargando carpetas…</option>
+  </select>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+  <script>
+    const SUPABASE_URL     = 'https://grootjniffhweeuegwsn.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyb290am5pZmZod2VldWVnd3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwOTUzMDAsImV4cCI6MjA2NTY3MTMwMH0.hrTwlWaO4aPOLXMSrEyPHgUh9O8ql_qh2NA53birE6I';
+    const BUCKET_NAME      = 'comprobantes';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const selectEl = document.getElementById('folderSelect');
+    const btn      = document.getElementById('downloadBtn');
+
+    async function loadFolders() {
+      const { data, error } = await supabaseClient
+        .storage
+        .from(BUCKET_NAME)
+        .list('', { limit: 1000 });
+
+      if (error) {
+        selectEl.innerHTML = '<option disabled>Error al cargar</option>';
+        return;
+      }
+
+      selectEl.innerHTML = '<option value="" disabled selected>Selecciona carpeta</option>';
+      data.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        opt.textContent = item.name;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    async function listAllFiles(path = '') {
+      const { data, error } = await supabaseClient
+        .storage
+        .from(BUCKET_NAME)
+        .list(path, { limit: 1000 });
+      if (error) throw error;
+
+      let files = [];
+      for (let item of data) {
+        const fullPath = path ? `${path}/${item.name}` : item.name;
+        const isFolder = !item.metadata || item.metadata.contentLength === undefined;
+        if (isFolder) {
+          files = files.concat(await listAllFiles(fullPath));
+        } else {
+          files.push(fullPath);
+        }
+      }
+      return files;
+    }
+
+    async function downloadFolder(folder) {
+      btn.disabled = true;
+      btn.textContent = 'Preparando descarga…';
+      const zip = new JSZip();
+
+      try {
+        const files = await listAllFiles(folder);
+        for (let filePath of files) {
+          const { data: blob, error: dlErr } = await supabaseClient
+            .storage
+            .from(BUCKET_NAME)
+            .download(filePath);
+          if (!dlErr) zip.file(filePath, blob);
+        }
+        const content = await zip.generateAsync({ type: 'blob' });
+        saveAs(content, `${folder}.zip`);
+      } catch (e) {
+        alert('Error al preparar la descarga. Revisa consola.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Descargar carpeta';
+      }
+    }
+
+    btn.addEventListener('click', () => {
+      if (selectEl.value) downloadFolder(selectEl.value);
+    });
+
+    loadFolders();
+  </script>
+</body>
+</html>
