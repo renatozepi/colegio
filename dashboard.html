@@ -993,6 +993,10 @@ button.day-btn,
   </style>
 </head>
 <body>
+  if (/\/login\.html?$/i.test(location.pathname)) {
+  // estamos en login.html ⇒ el dashboard no debe correr aquí
+  return;   // ⬅️  aborta el resto del script
+}
 <div id="appLoader">
   <div class="loader-ring"></div>
 </div>
