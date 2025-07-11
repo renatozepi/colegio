@@ -2305,6 +2305,10 @@ async function attemptLogin(){
       alert("Contraseña incorrecta.");
       return;
     }
+/* >>>  GUARDA la sesión para que dashboard.html la detecte  <<< */
+localStorage.setItem("usuario",  userData.username);
+localStorage.setItem("permisos", JSON.stringify(userData.permisos || {}));
+currentUser = { username: userData.username, permisos: userData.permisos || {} };
 
     // Si coincide, login exitoso
     currentUser = {
