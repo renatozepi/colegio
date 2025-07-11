@@ -1804,6 +1804,12 @@ if (!currentUser.username) {
   // Ya tengo currentUser, así que aplico permisos:
   applyPermissionsToMenus();
 }
+/* --- evita el bucle de recarga --- */
+const isLoginPage = /login\.html$/i.test(location.pathname);
+if (!currentUser?.username && !isLoginPage) {
+  window.location.href = "login.html";
+}
+
 
   /*************************************************************
    * Global Variables and Screen Navigation
