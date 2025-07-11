@@ -993,7 +993,6 @@ button.day-btn,
   </style>
 </head>
 <body>
-
 <div id="appLoader">
   <div class="loader-ring"></div>
 </div>
@@ -1469,22 +1468,6 @@ button.day-btn,
 
 <!-- Coloca esto al inicio del bloque de <script> en tu dashboard -->
 <script type="module" defer>
-    const IS_LOGIN = /\/login\.html?$/i.test(location.pathname);
-
-  const usuarioLS  = localStorage.getItem('usuario');      // o null
-  const permisosLS = JSON.parse(localStorage.getItem('permisos') || '{}');
-
-  let currentUser = usuarioLS ? { username: usuarioLS, permisos: permisosLS }
-                              : null;
-
-  /* no logeado & fuera de login → manda a login ------------------ */
-  if (!currentUser && !IS_LOGIN) location.replace('login.html');
-
-  /* logeado & en login → salta al dashboard ---------------------- */
-  if (currentUser && IS_LOGIN)   location.replace('index.html');
-
-  /* logeado & en dashboard → continua, aplica permisos ----------- */
-  if (currentUser && !IS_LOGIN)  applyPermissionsToMenus();
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -1815,7 +1798,17 @@ let currentUser = {
   permisos: JSON.parse(localStorage.getItem("permisos") || "{}")
 };
 
-
+if (!currentUser.username) {
+  window.location.href = "login.html";
+} else {
+  // Ya tengo currentUser, así que aplico permisos:
+  applyPermissionsToMenus();
+}
+/* --- evita el bucle de recarga --- */
+const isLoginPage = /login\.html$/i.test(location.pathname);
+if (!currentUser?.username && !isLoginPage) {
+  window.location.href = "login.html";
+}
 
 
   /*************************************************************
