@@ -1478,6 +1478,46 @@ button.day-btn,
 
   /* ➡️  Cliente global accesible en todos tus scripts */
   window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  /* ============================
+   🔄 Mantener Supabase activo
+   ============================ */
+function keepSupabaseAlive() {
+  const PING_INTERVAL_MINUTES = 30; // cada 30 minutos
+  const PING_URL = "https://grootjniffhweeuegwsn.supabase.co/rest/v1/";
+
+  async function ping() {
+    try {
+      const res = await fetch(PING_URL, { method: "HEAD" });
+      if (res.ok) {
+        console.log("✅ Supabase activo (ping exitoso)");
+      } else {
+        console.warn("⚠️ Ping fallido, reintentando conexión a Supabase...");
+        reconnectSupabase();
+      }
+    } catch (err) {
+      console.warn("🚫 Error al hacer ping a Supabase:", err.message);
+      reconnectSupabase();
+    }
+  }
+
+  function reconnectSupabase() {
+    import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm')
+      .then(({ createClient }) => {
+        window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("♻️ Supabase reconectado automáticamente");
+      })
+      .catch(e => console.error("❌ Error al reconectar Supabase:", e));
+  }
+
+  // Primer ping inmediato al cargar
+  ping();
+  // Ping recurrente cada X minutos
+  setInterval(ping, PING_INTERVAL_MINUTES * 60 * 1000);
+}
+
+// Llamar cuando se cargue la app
+keepSupabaseAlive();
+
   import {
     getFirestore,
     doc,
@@ -5676,4 +5716,5 @@ window.migrateOldProofs    = migrateOldProofs;
 </script>
 </body>
 </html>
+
 
