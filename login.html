@@ -1799,7 +1799,8 @@ let currentUser = {
 };
 
 if (!currentUser.username) {
-  window.location.href = "login.html";
+  window.location.replace("index.html");
+  throw new Error("Redirecting to login");
 } else {
   // Ya tengo currentUser, así que aplico permisos:
   applyPermissionsToMenus();
@@ -2350,7 +2351,7 @@ function logout(){
   document.getElementById('logoutContainer').style.display = 'none';
 
   // Redirigir al login
-  window.location.href = "login.html";
+  window.location.replace("index.html");
 }
 
 function applyPermissionsToMenus() {
