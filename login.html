@@ -2648,114 +2648,105 @@ function generarTxt() {
   }
 
   /* ====== parámetros fijos de cabecera (registro 01) ====== */
-  generateCount++;                                       // consecutivo local
+  generateCount++;
   const hoy        = new Date();
-  const yyyy       = hoy.getFullYear();                  // 2025
-  const yy         = yyyy.toString().slice(-2);          // 25
-  const fechaFact  = yyyy + String(hoy.getMonth() + 1).padStart(2, "0") +
-                     String(hoy.getDate()).padStart(2, "0");
+  const yyyy       = hoy.getFullYear();
+  const yy         = yyyy.toString().slice(-2);
+  const dd         = String(hoy.getDate()).padStart(2, "0");
+  const mm         = String(hoy.getMonth() + 1).padStart(2, "0");
+  const fechaFact  = `${yyyy}${dd}${mm}`;
 
   const ruc            = "10181763472";
   const moneda         = "PEN";
-  const numeroClase    = "000";      // BBVA: clase de servicio
-  const tipoActu       = "P";        // P = provisión
+  const numeroClase    = "000";
+  const tipoActu       = "P";
   const blancosCab     = " ".repeat(322);
 
   let contenido  = "";
-  /* ---------- REGISTRO 01 (cabecera) ----------- */
   contenido +=
-      "01" +                 // id registro
+      "01" +
       ruc +
       numeroClase +
       moneda +
       fechaFact +
-      "001" +                // Nº de lote
+      "001" +
       " ".repeat(7) +
       tipoActu +
       blancosCab +
       "\r\n";
 
-  /* ---------- REGISTROS 02 (detalle) ----------- */
   const meses = [
     "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
     "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
   ];
 
   let contadorReg  = 0;
-  let importeMin   = Number.POSITIVE_INFINITY;   // en céntimos
+  let importeMin   = Number.POSITIVE_INFINITY;
   let importeMax   = 0;
   let importeTotal = 0;
 
-  /* Para la fecha de bloqueo (30‑SEP del año siguiente) */
   const fechaBloqueo = `${yyyy + 1}0930`;
 
   mac.alumnos.forEach(item => {
     const fechaIns = new Date(item.fechaInscripcion);
     const anioIni  = fechaIns.getFullYear();
-    const mesIni   = fechaIns.getMonth();        // 0–11
+    const mesIni   = fechaIns.getMonth();
     const diaIns   = String(fechaIns.getDate()).padStart(2, "0");
 
-    /* -------- prefijo CJ / 0CJ según regla del banco -------- */
-    const codigoNum  = parseInt(item.codigoRestante, 10);  // ej. '37' → 37
+    const codigoNum  = parseInt(item.codigoRestante, 10);
     const prefijo    = codigoNum < 100
-                        ? `CJ${yyyy}`      //  CJ2025
-                        : `0CJ${yy}`;      // 0CJ25
+                        ? `CJ${yyyy}`
+                        : `0CJ${yy}`;
 
     for (let m = mesIni; m < 12; m++) {
-      const mesNombre = meses[m];                         // texto (ENERO, …)
-      const mesStr    = String(m + 1).padStart(2, "0");   // 01‑12
+      const mesNombre = meses[m];
+      const mesStr    = String(m + 1).padStart(2, "0");
 
-      /* ------------- campo “concepto” (40 car.) ------------- */
       const codigoConc = (
         prefijo +
-        item.codigoRestante.padStart(2, "0") +   // asegura 2 dígitos
+        item.codigoRestante.padStart(2, "0") +
         mesNombre
       )
-        .substring(0, 40)   // si se pasa, corta
-        .padEnd(40, " ");   // rellena a la derecha
+        .substring(0, 40)
+        .padEnd(40, " ");
 
-      /* ------------ importe en céntimos (18 N) -------------- */
       const importeCent = Math.round(item.importe * 100);
 
       importeMin   = Math.min(importeMin, importeCent);
       importeMax   = Math.max(importeMax, importeCent);
       importeTotal += importeCent;
 
-      /* ---------- armado del registro 02 (360 car.) --------- */
       let linea02 =
         "02" +
-        (item.apellidos + " " + item.nombre)           // alumno
+        (item.apellidos + " " + item.nombre)
           .substring(0, 30)
           .padEnd(30, " ") +
-        codigoConc +                                   // concepto
-        " ".repeat(8) +                                // libre
-        `${anioIni}${mesStr}${diaIns}` +               // fecha venc.
+        codigoConc +
+        " ".repeat(8) +
+        `${anioIni}${mesStr}${diaIns}` +
         fechaBloqueo +
-        "00" +                                         // tipo de recargo
-        String(importeCent).padStart(15, "0") +        // importe mínimo
-        String(importeCent).padStart(15, "0") +        // importe máximo
-        "0".repeat(180) +                              // blanco / libre
-        "L000000000000000";                            // indicador detalle
+        "00" +
+        String(importeCent).padStart(15, "0") +
+        String(importeCent).padStart(15, "0") +
+        "0".repeat(180) +
+        "L000000000000000";
 
-      /* asegurar 360 */
       linea02 = linea02.padEnd(360, " ");
       contenido += linea02 + "\r\n";
       contadorReg++;
     }
   });
 
-  /* ---------- REGISTRO 03 (trailer) ------------ */
   let linea03 =
     "03" +
     String(contadorReg).padStart(9, "0") +
-    String(importeMin) .padStart(18, "0") +
-    String(importeMax) .padStart(18, "0") +
+    String(importeMin).padStart(18, "0") +
+    String(importeMax).padStart(18, "0") +
     String(importeTotal).padStart(18, "0") +
     " ".repeat(295);
 
-  contenido += linea03; // el 03 no lleva CRLF final según BBVA
+  contenido += linea03;
 
-  /* ---------- descarga del archivo .TXT ---------- */
   const filename = `carga_bbva_${fechaFact}_${generateCount}.txt`;
   const blob     = new Blob([contenido], { type: "text/plain" });
   const url      = URL.createObjectURL(blob);
