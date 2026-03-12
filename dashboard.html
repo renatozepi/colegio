@@ -2830,7 +2830,59 @@ async function saveToFirebaseMacros(){
     mostrarMacros();
     saveToFirebaseMacros();
   }
+function generarTxt() {
+  if (!editingMacroId) {
+    alert("No hay macro seleccionada.");
+    return;
+  }
 
+  const mac = macros.find(m => m.id === editingMacroId);
+  if (!mac) {
+    alert("Macro no encontrada");
+    return;
+  }
+
+  /* ====== parámetros fijos de cabecera (registro 01) ====== */
+  generateCount++;
+  const hoy        = new Date();
+  const yyyy       = hoy.getFullYear();                  // 2025
+  const yy         = yyyy.toString().slice(-2);          // 25
+  const fechaFact  = yyyy + String(hoy.getMonth() + 1).padStart(2, "0") +
+                     String(hoy.getDate()).padStart(2, "0");
+
+  const ruc            = "00018176347";
+  const moneda         = "PEN";
+  const numeroClase    = "000";
+  const tipoActu       = "P";
+  const blancosCab     = " ".repeat(322);
+
+  let contenido  = "";
+  contenido +=
+      "01" +
+      ruc +
+      numeroClase +
+      moneda +
+      fechaFact +
+      "001" +
+      " ".repeat(7) +
+      tipoActu +
+      blancosCab +
+      "\r\n";
+
+  const meses = [
+    "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+    "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
+  ];
+
+  let contadorReg  = 0;
+  let importeMin   = Number.POSITIVE_INFINITY;
+  let importeMax   = 0;
+  let importeTotal = 0;
+
+  const fechaBloqueo = `${yyyy + 1}0930`;
+  function obtenerUltimoDiaDelMes(anio, mesIndex) {
+  return new Date(anio, mesIndex + 1, 0).getDate();
+}
 
 function normalizarTextoBBVA(texto) {
   return String(texto || "")
@@ -5674,9 +5726,6 @@ window.migrateOldProofs    = migrateOldProofs;
 </script>
 </body>
 </html>
-
-
-
 
 
 
