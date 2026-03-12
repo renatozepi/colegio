@@ -2845,11 +2845,10 @@ function generarTxt() {
   /* ====== parámetros fijos de cabecera (registro 01) ====== */
   generateCount++;
   const hoy        = new Date();
-  const yyyy       = hoy.getFullYear();
-  const yy         = yyyy.toString().slice(-2);
-  const dd         = String(hoy.getDate()).padStart(2, "0");
-  const mm         = String(hoy.getMonth() + 1).padStart(2, "0");
-  const fechaFact  = `${yyyy}${dd}${mm}`;
+  const yyyy       = hoy.getFullYear();                  // 2025
+  const yy         = yyyy.toString().slice(-2);          // 25
+  const fechaFact  = yyyy + String(hoy.getMonth() + 1).padStart(2, "0") +
+                     String(hoy.getDate()).padStart(2, "0");
 
   const ruc            = "10181763472";
   const moneda         = "PEN";
@@ -5708,6 +5707,7 @@ window.migrateOldProofs    = migrateOldProofs;
 </script>
 </body>
 </html>
+
 
 
 
