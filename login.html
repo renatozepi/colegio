@@ -2647,46 +2647,202 @@ function generarTxt() {
     return;
   }
 
-  /* ====== parámetros fijos de cabecera (registro 01) ====== */
+  function padLeft(value, length, char = "0") {
+    return String(value ?? "").padStart(length, char).slice(-length);
+  }
+
+  function padRight(value, length, char = " ") {
+    return String(value ?? "").padEnd(length, char).slice(0, length);
+  }
+
+  function formatDateYYYYMMDD(dateLike) {
+    const d = new Date(dateLike);
+    if (Number.isNaN(d.getTime())) return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}${mm}${dd}`;
+  }
+
+  function getLastDayOfMonth(year, monthIndex) {
+    return new Date(year, monthIndex + 1, 0).getDate();
+  }
+
+  function buildValidDueDate(year, monthIndex, originalDay) {
+    const safeDay = Math.min(originalDay, getLastDayOfMonth(year, monthIndex));
+    return `${year}${String(monthIndex + 1).padStart(2, "0")}${String(safeDay).padStart(2, "0")}`;
+  }
+
+  function normalizeBbvaText(text) {
+    return String(text || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[ñÑ]/g, "N")
+      .replace(/,/g, " ")
+      .replace(/[^A-Z0-9 ]/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function amountTo15(value) {
+    const cents = Math.round((Number(value) || 0) * 100);
+    return padLeft(cents, 15, "0");
+  }
+
+  function amountTo14(value) {
+    const cents = Math.round((Number(value) || 0) * 100);
+    return padLeft(cents, 14, "0");
+  }
+
   generateCount++;
-  const hoy        = new Date();
-  const yyyy       = hoy.getFullYear();                  // 2025
-  const yy         = yyyy.toString().slice(-2);          // 25
-  const fechaFact  = yyyy + String(hoy.getMonth() + 1).padStart(2, "0") +
-                     String(hoy.getDate()).padStart(2, "0");
 
-  const ruc            = "00018176347";
-  const moneda         = "PEN";
-  const numeroClase    = "000";
-  const tipoActu       = "P";
-  const blancosCab     = " ".repeat(322);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentYY = String(currentYear).slice(-2);
 
-  let contenido  = "";
+  // ===== Cabecera según macro original Excel =====
+  const RUC = "10181763472";
+  const RECAUDO = "000";
+  const MONEDA = "PEN";
+  const VERSION = "001";
+  const TIPO_ACTU = "P";
+
+  // El Excel original usa YYYYMMDD
+  const FECHA = formatDateYYYYMMDD(now);
+
+  let contenido = "";
+
+  // Registro 01
   contenido +=
-      "01" +
-      ruc +
-      numeroClase +
-      moneda +
-      fechaFact +
-      "001" +
-      " ".repeat(7) +
-      tipoActu +
-      blancosCab +
-      "\r\n";
+    "01" +
+    padRight(RUC, 11, "0") +
+    padRight(RECAUDO, 3, "0") +
+    padRight(MONEDA, 3, " ") +
+    padRight(FECHA, 8, "0") +
+    padRight(VERSION, 3, "0") +
+    " ".repeat(7) +
+    padRight(TIPO_ACTU, 1, " ") +
+    " ".repeat(322) +
+    "\r\n";
 
   const meses = [
-    "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
-    "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
   ];
 
-  let contadorReg  = 0;
-  let importeMin   = Number.POSITIVE_INFINITY;
-  let importeMax   = 0;
-  let importeTotal = 0;
+  let totalRegistros = 0;
+  let totalImporteMin = 0;
+  let totalImporteMax = 0;
 
-  const fechaBloqueo = `${yyyy + 1}0930`;
-  function obtenerUltimoDiaDelMes(anio, mesIndex) {
-  return new Date(anio, mesIndex + 1, 0).getDate();
+  mac.alumnos.forEach((item) => {
+    const fechaIns = new Date(item.fechaInscripcion);
+    if (Number.isNaN(fechaIns.getTime())) return;
+
+    const anioIni = fechaIns.getFullYear();
+    const mesIni = fechaIns.getMonth();
+    const diaOriginal = fechaIns.getDate();
+
+    const codigoRestante = String(item.codigoRestante || "").trim().toUpperCase();
+    const codigoNum = parseInt(codigoRestante, 10);
+
+    // Equivalente práctico al armado original XCODIGO + código + XDESCRI + detalle
+    // Mantiene el frontend actual y completa automáticamente lo omitido.
+    const prefijoCodigo = Number.isFinite(codigoNum) && codigoNum < 100
+      ? `CJ${currentYear}`
+      : `0CJ${currentYY}`;
+
+    const nombreAlumno = padRight(
+      normalizeBbvaText(`${item.apellidos} ${item.nombre}`),
+      30,
+      " "
+    );
+
+    const importeMinCent = Math.round((Number(item.importe) || 0) * 100);
+    const importeMaxCent = importeMinCent;
+
+    for (let m = mesIni; m < 12; m++) {
+      const mesNombre = meses[m];
+
+      // Campo 48 como en el original, completado automáticamente
+      const referencia48 = padRight(
+        `${prefijoCodigo}${codigoRestante}${mesNombre}`,
+        48,
+        " "
+      );
+
+      // Fecha vencimiento válida por mes
+      const fechaVenc = buildValidDueDate(anioIni, m, diaOriginal);
+
+      // Fecha bloqueo: 30/09 del año siguiente a la fecha de vencimiento
+      const fechaBloqueo = `${anioIni + 1}0930`;
+
+      // Campos omitidos en el frontend, pero presentes en el output original
+      const tipoRecargo = "00";
+
+      const codK = "00", impL = "00000000000000";
+      const codM = "00", impN = "00000000000000";
+      const codO = "00", impP = "00000000000000";
+      const codQ = "00", impR = "00000000000000";
+      const codS = "00", impT = "00000000000000";
+      const codU = "00", impV = "00000000000000";
+      const codW = "00", impX = "00000000000000";
+      const codY = "00", impZ = "00000000000000";
+      const campoAA = "00000000000000000000";
+      const campoAB = "L";
+      const campoAC = "000000000000000";
+
+      let linea02 =
+        "02" +
+        nombreAlumno +                     // 30
+        referencia48 +                     // 48
+        fechaVenc +                        // 8
+        fechaBloqueo +                     // 8
+        tipoRecargo +                      // 2
+        amountTo15(item.importe) +         // 15
+        amountTo15(item.importe) +         // 15
+        "0".repeat(32) +                   // 32
+        codK + impL +                      // 16
+        codM + impN +                      // 16
+        codO + impP +                      // 16
+        codQ + impR +                      // 16
+        codS + impT +                      // 16
+        codU + impV +                      // 16
+        codW + impX +                      // 16
+        codY + impZ +                      // 16
+        campoAA +                          // 20
+        campoAB +                          // 1
+        campoAC +                          // 15
+        " ".repeat(36);                    // 36
+
+      contenido += linea02 + "\r\n";
+
+      totalRegistros += 1;
+      totalImporteMin += importeMinCent;
+      totalImporteMax += importeMaxCent;
+    }
+  });
+
+  // Registro 03 según macro original
+  contenido +=
+    "03" +
+    padLeft(totalRegistros, 9, "0") +
+    padLeft(totalImporteMin, 18, "0") +
+    padLeft(totalImporteMax, 18, "0") +
+    "0".repeat(18) +
+    " ".repeat(295);
+
+  const filename = `carga_bbva_${FECHA}_${generateCount}.txt`;
+  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function normalizarTextoBBVA(texto) {
