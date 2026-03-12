@@ -2702,7 +2702,7 @@ function generarTxt() {
   const currentYY = String(currentYear).slice(-2);
 
   // ===== Cabecera según macro original Excel =====
-  const RUC = "10181763472";
+  const RUC = "00018176347";
   const RECAUDO = "000";
   const MONEDA = "PEN";
   const VERSION = "001";
@@ -2775,7 +2775,7 @@ function generarTxt() {
       const fechaVenc = buildValidDueDate(anioIni, m, diaOriginal);
 
       // Fecha bloqueo: 30/09 del año siguiente a la fecha de vencimiento
-      const fechaBloqueo = `${anioIni + 1}0930`;
+      const fechaBloqueo = `${anioIni + 1}0131`;
 
       // Campos omitidos en el frontend, pero presentes en el output original
       const tipoRecargo = "00";
